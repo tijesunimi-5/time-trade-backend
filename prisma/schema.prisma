@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  phone        String?
+  role         String   @default("PARTICIPANT") // PARTICIPANT, FOLLOW_UP, ADMIN
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile             Profile?
+  completions         TaskCompletion[]
+  streak              Streak?
+  assignedFollowUps   FollowUpAssignment[] @relation("AssignedFollowUp")
+  managedParticipants FollowUpAssignment[] @relation("ManagedParticipants")
+  notesWritten        FollowUpNote[]       @relation("AuthorNotes")
+  notesReceived       FollowUpNote[]       @relation("TargetNotes")
+  testimonials        Testimonial[]
+}
+
+model Profile {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ageRange     String?
+  goals        String?  @db.Text
+  expectations String?  @db.Text
+  customAnswers String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Task {
+  id              String   @id @default(uuid())
+  title           String
+  description     String   @db.Text
+  pillar          String   // SPIRITUAL, SOCIAL, MENTAL
+  category        String?
+  frequencyType   String   @default("DAILY") // DAILY, WEEKLY, BIWEEKLY, MONTHLY, ONE_TIME, RECURRING
+  isNonNegotiable Boolean  @default(false)
+  isOptional      Boolean  @default(false)
+  dayNumber       Int?
+  weekNumber      Int?
+  startDate       String?
+  endDate         String?
+  resourceUrl     String?
+  instructions    String?  @db.Text
+  durationMinutes Int?     @default(15)
+  isActive        Boolean  @default(true)
+  displayOrder    Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  completions TaskCompletion[]
+}
+
+model TaskCompletion {
+  id             String   @id @default(uuid())
+  participantId  String
+  taskId         String
+  completedAt    DateTime @default(now())
+  completionDate String   // Format: YYYY-MM-DD
+  notes          String?  @db.Text
+
+  participant User @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  task        Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, taskId, completionDate])
+}
+
+model Streak {
+  id                String   @id @default(uuid())
+  participantId     String   @unique
+  user              User     @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  currentStreak     Int      @default(0)
+  longestStreak     Int      @default(0)
+  totalCompleted    Int      @default(0)
+  totalAssigned     Int      @default(0)
+  overallPercentage Float    @default(0.0)
+  lastCompletedDate String?
+  updatedAt         DateTime @updatedAt
+}
+
+model FollowUpAssignment {
+  id            String   @id @default(uuid())
+  followUpId    String
+  participantId String
+  assignedAt    DateTime @default(now())
+
+  followUpMember User @relation("ManagedParticipants", fields: [followUpId], references: [id], onDelete: Cascade)
+  participant    User @relation("AssignedFollowUp", fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([followUpId, participantId])
+}
+
+model FollowUpNote {
+  id            String   @id @default(uuid())
+  authorId      String
+  participantId String
+  noteContent   String   @db.Text
+  createdAt     DateTime @default(now())
+
+  author      User @relation("AuthorNotes", fields: [authorId], references: [id], onDelete: Cascade)
+  participant User @relation("TargetNotes", fields: [participantId], references: [id], onDelete: Cascade)
+}
+
+model LeaderboardConfig {
+  id         String   @id @default("global")
+  isEnabled  Boolean  @default(true)
+  showNames  Boolean  @default(true)
+  metricType String   @default("CONSISTENCY_PERCENTAGE")
+  updatedAt  DateTime @updatedAt
+}
+
+model CalendarEvent {
+  id          String   @id @default(uuid())
+  title       String
+  description String   @db.Text
+  pillar      String
+  eventDate   String
+  resourceUrl String?
+  createdAt   DateTime @default(now())
+}
+
+model Testimonial {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content     String   @db.Text
+  isPublic    Boolean  @default(false)
+  isApproved  Boolean  @default(false)
+  submittedAt DateTime @default(now())
+}
+
+model DynamicFormField {
+  id           String   @id @default(uuid())
+  fieldName    String   @unique
+  label        String
+  fieldType    String
+  isRequired   Boolean  @default(false)
+  options      String?  @db.Text
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+}
