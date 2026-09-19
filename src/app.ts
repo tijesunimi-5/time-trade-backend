@@ -38,9 +38,40 @@ app.use('/api/v1/admin', adminRoutes);
 // Error Middleware
 app.use(errorHandler);
 
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+
+async function autoMigrateDatabase() {
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Profile" ADD COLUMN IF NOT EXISTS "birthday" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Profile" ADD COLUMN IF NOT EXISTS "ageRange" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Profile" ADD COLUMN IF NOT EXISTS "goals" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Profile" ADD COLUMN IF NOT EXISTS "expectations" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Profile" ADD COLUMN IF NOT EXISTS "customAnswers" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "User" ALTER COLUMN "passwordHash" DROP NOT NULL;`);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "SystemSettings" (
+          "id" TEXT NOT NULL,
+          "isAdminRegistrationActive" BOOLEAN NOT NULL DEFAULT true,
+          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "SystemSettings_pkey" PRIMARY KEY ("id")
+      );
+    `);
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO "SystemSettings" ("id", "isAdminRegistrationActive", "updatedAt")
+      VALUES ('global', true, CURRENT_TIMESTAMP)
+      ON CONFLICT ("id") DO NOTHING;
+    `);
+    console.log('✅ Database schema auto-synchronized with Neon PostgreSQL.');
+  } catch (err: any) {
+    console.warn('Auto-migration non-fatal note:', err.message);
+  }
+}
+
 if (process.env.NODE_ENV !== 'test') {
   app.listen(config.port, () => {
     console.log(`🚀 YOUR TIME TRADE Backend Server running on http://localhost:${config.port}`);
+    autoMigrateDatabase();
   });
 }
 
