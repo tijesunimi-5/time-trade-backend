@@ -8,13 +8,18 @@ const prisma = new PrismaClient();
 
 // Helper to get or create global settings
 async function getSettings() {
-  let settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
-  if (!settings) {
-    settings = await prisma.systemSettings.create({
-      data: { id: 'global', isAdminRegistrationActive: true },
-    });
+  try {
+    let settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+    if (!settings) {
+      settings = await prisma.systemSettings.create({
+        data: { id: 'global', isAdminRegistrationActive: true },
+      });
+    }
+    return settings;
+  } catch (err) {
+    console.warn('SystemSettings table error, using fallback defaults:', err);
+    return { id: 'global', isAdminRegistrationActive: true };
   }
-  return settings;
 }
 
 // 1. Participant Passwordless Registration
@@ -238,7 +243,7 @@ export const getAdminRegistrationStatus = async (req: Request, res: Response) =>
     const settings = await getSettings();
     return res.json({ isAdminRegistrationActive: settings.isAdminRegistrationActive });
   } catch (error: any) {
-    return res.status(500).json({ error: 'Failed to fetch settings' });
+    return res.json({ isAdminRegistrationActive: true });
   }
 };
 
