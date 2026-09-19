@@ -22,17 +22,23 @@ export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: 
   return res.status(401).json({ error: 'Authorization header required' });
 };
 
-export const requireRole = (allowedRoles: Array<'PARTICIPANT' | 'FOLLOW_UP' | 'ADMIN' | string>) => {
+export const requireRole = (allowedRoles: Array<string>) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const userRoles = req.user.role.split(',').map((r) => r.trim());
-    const hasRole = allowedRoles.some((allowed) => userRoles.includes(allowed));
+
+    // If allowed contains ADMIN or LEADERSHIP, allow both LEADERSHIP and ADMIN
+    const expandedAllowed = [...allowedRoles];
+    if (allowedRoles.includes('ADMIN')) expandedAllowed.push('LEADERSHIP');
+    if (allowedRoles.includes('LEADERSHIP')) expandedAllowed.push('ADMIN');
+
+    const hasRole = expandedAllowed.some((allowed) => userRoles.includes(allowed));
 
     if (!hasRole) {
-      return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
+      return res.status(403).json({ error: 'Forbidden: Insufficient team permissions' });
     }
 
     next();

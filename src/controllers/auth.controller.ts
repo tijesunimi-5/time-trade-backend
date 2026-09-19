@@ -33,7 +33,6 @@ export const registerParticipant = async (req: Request, res: Response) => {
     });
 
     if (user) {
-      // User exists: update profile if participant
       if (user.role.includes('PARTICIPANT')) {
         await prisma.profile.upsert({
           where: { userId: user.id },
@@ -55,7 +54,6 @@ export const registerParticipant = async (req: Request, res: Response) => {
         });
       }
     } else {
-      // Create new participant
       user = await prisma.user.create({
         data: {
           email,
@@ -108,7 +106,7 @@ export const registerParticipant = async (req: Request, res: Response) => {
   }
 };
 
-// 2. Admin & EXCO Registration (/admin/auth)
+// 2. Admin & EXCO Team Registration (/admin/auth)
 export const registerAdmin = async (req: Request, res: Response) => {
   try {
     const settings = await getSettings();
@@ -129,7 +127,9 @@ export const registerAdmin = async (req: Request, res: Response) => {
     }
 
     const passwordHash = await hashPassword(password);
-    const joinedRoles = Array.from(new Set(roles)).join(',');
+    // Everyone belongs to LEADERSHIP by default if not specified
+    const finalRoles = Array.from(new Set(['LEADERSHIP', ...roles]));
+    const joinedRoles = finalRoles.join(',');
 
     const user = await prisma.user.create({
       data: {
@@ -140,7 +140,7 @@ export const registerAdmin = async (req: Request, res: Response) => {
         role: joinedRoles,
         profile: {
           create: {
-            goals: 'Admin & EXCO Leadership Team',
+            goals: 'EXCO Leadership & Operations Team',
           },
         },
       },
@@ -154,7 +154,7 @@ export const registerAdmin = async (req: Request, res: Response) => {
     });
 
     return res.status(201).json({
-      message: 'Admin account created successfully',
+      message: 'EXCO account created successfully',
       token,
       user: {
         id: user.id,
@@ -190,12 +190,14 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const userRoles = user.role.split(',').map((r) => r.trim());
-    const isAdminOrFollowUp = userRoles.includes('ADMIN') || userRoles.includes('FOLLOW_UP');
+    const isExcoMember = userRoles.some((r) =>
+      ['LEADERSHIP', 'ADMIN', 'FOLLOW_UP', 'PROGRAM_PLANNING', 'COMMUNITY_MANAGEMENT', 'MEDIA', 'CONTENT'].includes(r)
+    );
 
-    // If Admin/Follow-Up, require valid password match
-    if (isAdminOrFollowUp) {
+    // If EXCO team member, require valid password match
+    if (isExcoMember) {
       if (!password) {
-        return res.status(400).json({ error: 'Password is required for Admin/Coach login' });
+        return res.status(400).json({ error: 'Password is required for EXCO team login' });
       }
       if (user.passwordHash) {
         const isMatch = await comparePassword(password, user.passwordHash);
@@ -205,7 +207,6 @@ export const login = async (req: Request, res: Response) => {
       }
     }
 
-    // Generate JWT token
     const token = generateToken({
       userId: user.id,
       email: user.email,
