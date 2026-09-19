@@ -5,21 +5,20 @@ const prisma = new PrismaClient();
 
 export const getAdminOverview = async (req: Request, res: Response) => {
   try {
-    const totalParticipants = await prisma.user.count({ where: { role: 'PARTICIPANT' } });
-    const totalFollowUps = await prisma.user.count({ where: { role: 'FOLLOW_UP' } });
+    const totalParticipants = await prisma.user.count({
+      where: { role: { contains: 'PARTICIPANT' } },
+    });
+    const totalFollowUps = await prisma.user.count({
+      where: { role: { contains: 'FOLLOW_UP' } },
+    });
     const totalTasks = await prisma.task.count({ where: { isActive: true } });
     const totalCompletions = await prisma.taskCompletion.count();
-
     const pendingTestimonials = await prisma.testimonial.count({ where: { isApproved: false } });
 
-    // Recent completions
-    const recentActivity = await prisma.taskCompletion.findMany({
-      take: 10,
-      orderBy: { completedAt: 'desc' },
-      include: {
-        participant: { select: { fullName: true, email: true } },
-        task: { select: { title: true, pillar: true } },
-      },
+    const settings = await prisma.systemSettings.upsert({
+      where: { id: 'global' },
+      update: {},
+      create: { id: 'global', isAdminRegistrationActive: true },
     });
 
     return res.json({
@@ -31,7 +30,7 @@ export const getAdminOverview = async (req: Request, res: Response) => {
         pendingTestimonials,
         activeChallengeDay: 17,
       },
-      recentActivity,
+      settings,
     });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to fetch admin overview' });
@@ -40,8 +39,7 @@ export const getAdminOverview = async (req: Request, res: Response) => {
 
 export const getAllParticipants = async (req: Request, res: Response) => {
   try {
-    const participants = await prisma.user.findMany({
-      where: { role: 'PARTICIPANT' },
+    const users = await prisma.user.findMany({
       include: {
         profile: true,
         streak: true,
@@ -51,9 +49,68 @@ export const getAllParticipants = async (req: Request, res: Response) => {
       },
       orderBy: { createdAt: 'desc' },
     });
-    return res.json({ participants });
+
+    const parsedUsers = users.map((u) => ({
+      ...u,
+      rolesList: u.role.split(',').map((r) => r.trim()),
+    }));
+
+    return res.json({ participants: parsedUsers });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to fetch participants' });
+  }
+};
+
+export const updateUserRoles = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { roles, fullName, phone } = req.body;
+
+    if (!roles || !Array.isArray(roles) || roles.length === 0) {
+      return res.status(400).json({ error: 'At least one role is required' });
+    }
+
+    const joinedRoles = Array.from(new Set(roles)).join(',');
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: {
+        role: joinedRoles,
+        fullName: fullName || undefined,
+        phone: phone || undefined,
+      },
+    });
+
+    return res.json({
+      message: 'User updated successfully',
+      user: {
+        ...updatedUser,
+        rolesList: updatedUser.role.split(',').map((r) => r.trim()),
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to update user roles' });
+  }
+};
+
+export const updateSystemSettings = async (req: Request, res: Response) => {
+  try {
+    const { isAdminRegistrationActive } = req.body;
+
+    const settings = await prisma.systemSettings.upsert({
+      where: { id: 'global' },
+      update: {
+        isAdminRegistrationActive: typeof isAdminRegistrationActive === 'boolean' ? isAdminRegistrationActive : true,
+      },
+      create: {
+        id: 'global',
+        isAdminRegistrationActive: typeof isAdminRegistrationActive === 'boolean' ? isAdminRegistrationActive : true,
+      },
+    });
+
+    return res.json({ message: 'Settings updated successfully', settings });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to update settings' });
   }
 };
 

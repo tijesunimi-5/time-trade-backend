@@ -22,13 +22,16 @@ export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: 
   return res.status(401).json({ error: 'Authorization header required' });
 };
 
-export const requireRole = (roles: Array<'PARTICIPANT' | 'FOLLOW_UP' | 'ADMIN'>) => {
+export const requireRole = (allowedRoles: Array<'PARTICIPANT' | 'FOLLOW_UP' | 'ADMIN' | string>) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    if (!roles.includes(req.user.role)) {
+    const userRoles = req.user.role.split(',').map((r) => r.trim());
+    const hasRole = allowedRoles.some((allowed) => userRoles.includes(allowed));
+
+    if (!hasRole) {
       return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
     }
 

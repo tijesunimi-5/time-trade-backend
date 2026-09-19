@@ -5,7 +5,7 @@ import { config } from '../config';
 export interface TokenPayload {
   userId: string;
   email: string;
-  role: 'PARTICIPANT' | 'FOLLOW_UP' | 'ADMIN';
+  role: string;
 }
 
 export const hashPassword = async (password: string): Promise<string> => {

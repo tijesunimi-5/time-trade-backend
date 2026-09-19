@@ -10,10 +10,10 @@ datasource db {
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
-  passwordHash String
+  passwordHash String?  // Optional for participants (email-only auth)
   fullName     String
   phone        String?
-  role         String   @default("PARTICIPANT") // PARTICIPANT, FOLLOW_UP, ADMIN
+  role         String   @default("PARTICIPANT") // Comma-separated roles if multiple (e.g. "ADMIN,FOLLOW_UP" or "PARTICIPANT")
   avatarUrl    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -32,6 +32,7 @@ model Profile {
   id           String   @id @default(uuid())
   userId       String   @unique
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  birthday     String?
   ageRange     String?
   goals        String?  @db.Text
   expectations String?  @db.Text
@@ -145,9 +146,15 @@ model DynamicFormField {
   id           String   @id @default(uuid())
   fieldName    String   @unique
   label        String
-  fieldType    String
+  fieldType    String   // text, select, textarea, checkbox, date
   isRequired   Boolean  @default(false)
-  options      String?  @db.Text
+  options      String?  @db.Text // JSON stringified options
   displayOrder Int      @default(0)
   isActive     Boolean  @default(true)
+}
+
+model SystemSettings {
+  id                        String   @id @default("global")
+  isAdminRegistrationActive Boolean  @default(true)
+  updatedAt                 DateTime @updatedAt
 }

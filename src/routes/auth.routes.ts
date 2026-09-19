@@ -1,10 +1,18 @@
 import { Router } from 'express';
-import { register, login, getCurrentUser } from '../controllers/auth.controller';
+import {
+  registerParticipant,
+  registerAdmin,
+  getAdminRegistrationStatus,
+  login,
+  getCurrentUser,
+} from '../controllers/auth.controller';
 import { authenticateJWT } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-router.post('/register', register);
+router.post('/register', registerParticipant);
+router.post('/admin/register', registerAdmin);
+router.get('/admin/status', getAdminRegistrationStatus);
 router.post('/login', login);
 router.get('/me', authenticateJWT, getCurrentUser);
 
