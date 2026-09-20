@@ -34,13 +34,15 @@ const FORM_BUILDER_ROLES = [
   'FOLLOW_UP',
 ];
 
-// Base protection: Any EXCO team member
+// PUBLIC READ: Allow dynamic registration form fields to be read by public visitors on /register
+router.get('/forms/fields', getDynamicFormFields);
+
+// Protected EXCO Routes: Require JWT and EXCO role
 router.use(authenticateJWT, requireRole(ALL_EXCO_ROLES));
 
 // General EXCO Read & Overview Routes
 router.get('/overview', getAdminOverview);
 router.get('/participants', getAllParticipants);
-router.get('/forms/fields', getDynamicFormFields);
 router.get('/testimonials/pending', getPendingTestimonials);
 
 // Form Builder Mutations (Restricted to Leadership, Community Management, Follow-Up)
