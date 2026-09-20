@@ -164,7 +164,6 @@ export const approveTestimonial = async (req: Request, res: Response) => {
 export const getDynamicFormFields = async (req: Request, res: Response) => {
   try {
     const fields = await prisma.dynamicFormField.findMany({
-      where: { isActive: true },
       orderBy: { displayOrder: 'asc' },
     });
     return res.json({ fields });
@@ -175,9 +174,86 @@ export const getDynamicFormFields = async (req: Request, res: Response) => {
 
 export const createDynamicFormField = async (req: Request, res: Response) => {
   try {
-    const field = await prisma.dynamicFormField.create({ data: req.body });
-    return res.status(201).json({ field });
+    const { fieldName, label, fieldType, isRequired, options, displayOrder, isActive } = req.body;
+    
+    if (!label || !fieldType) {
+      return res.status(400).json({ error: 'Question label and answer type are required' });
+    }
+
+    const generatedKey = fieldName || `q_${Date.now()}`;
+    const stringifiedOptions = typeof options === 'object' ? JSON.stringify(options) : options;
+
+    const field = await prisma.dynamicFormField.create({
+      data: {
+        fieldName: generatedKey,
+        label,
+        fieldType,
+        isRequired: !!isRequired,
+        options: stringifiedOptions || undefined,
+        displayOrder: typeof displayOrder === 'number' ? displayOrder : 0,
+        isActive: isActive !== false,
+      },
+    });
+
+    return res.status(201).json({ message: 'Question created successfully', field });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to create dynamic field' });
+  }
+};
+
+export const updateDynamicFormField = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { label, fieldType, isRequired, options, displayOrder, isActive } = req.body;
+
+    const stringifiedOptions = typeof options === 'object' ? JSON.stringify(options) : options;
+
+    const field = await prisma.dynamicFormField.update({
+      where: { id },
+      data: {
+        label: label || undefined,
+        fieldType: fieldType || undefined,
+        isRequired: typeof isRequired === 'boolean' ? isRequired : undefined,
+        options: stringifiedOptions !== undefined ? stringifiedOptions : undefined,
+        displayOrder: typeof displayOrder === 'number' ? displayOrder : undefined,
+        isActive: typeof isActive === 'boolean' ? isActive : undefined,
+      },
+    });
+
+    return res.json({ message: 'Question updated successfully', field });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to update dynamic field' });
+  }
+};
+
+export const deleteDynamicFormField = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.dynamicFormField.delete({ where: { id } });
+    return res.json({ message: 'Question deleted successfully' });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to delete dynamic field' });
+  }
+};
+
+export const reorderDynamicFormFields = async (req: Request, res: Response) => {
+  try {
+    const { fieldOrders } = req.body; // Array of { id: string, displayOrder: number }
+    if (!Array.isArray(fieldOrders)) {
+      return res.status(400).json({ error: 'fieldOrders array required' });
+    }
+
+    await Promise.all(
+      fieldOrders.map((item: { id: string; displayOrder: number }) =>
+        prisma.dynamicFormField.update({
+          where: { id: item.id },
+          data: { displayOrder: item.displayOrder },
+        })
+      )
+    );
+
+    return res.json({ message: 'Questions reordered successfully' });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to reorder fields' });
   }
 };
