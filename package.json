@@ -1,7 +1,7 @@
 {
-  "name": "your-time-trade-backend",
+  "name": "time-trade-backend",
   "version": "1.0.0",
-  "description": "Backend API for YOUR TIME TRADE 90-Day Personal Growth Platform",
+  "description": "Backend API for TIME TRADE 90-Day Personal Growth Platform",
   "main": "dist/app.js",
   "scripts": {
     "build": "prisma generate && tsc",

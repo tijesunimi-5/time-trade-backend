@@ -8,8 +8,8 @@ router.get('/today', authenticateJWT, getTodayTasks);
 router.post('/toggle', authenticateJWT, toggleTaskCompletion);
 
 // Admin task management
-router.post('/', authenticateJWT, requireRole(['ADMIN']), createTask);
-router.put('/:id', authenticateJWT, requireRole(['ADMIN']), updateTask);
-router.delete('/:id', authenticateJWT, requireRole(['ADMIN']), deleteTask);
+router.post('/', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), createTask);
+router.put('/:id', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), updateTask);
+router.delete('/:id', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), deleteTask);
 
 export default router;

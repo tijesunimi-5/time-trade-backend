@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function seed() {
-  console.log('🌱 Seeding YOUR TIME TRADE database with 90-Day Programme Architecture...');
+  console.log('🌱 Seeding TIME TRADE database with 90-Day Programme Architecture...');
 
   // Clean existing tables
   await prisma.taskCompletion.deleteMany();
@@ -165,7 +165,7 @@ async function seed() {
   // 6. Seed Programme Architecture (90 Days)
   const programme = await prisma.programme.create({
     data: {
-      title: 'YOUR TIME TRADE 90-Day Personal Growth Challenge',
+      title: 'TIME TRADE 90-Day Personal Growth Challenge',
       description: 'A structured 90-day experience to reset, restart, and refocus your life.',
       startDate: '2026-09-27',
       isActive: true,

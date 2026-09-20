@@ -23,7 +23,7 @@ app.use(express.json());
 
 // Health Check
 app.get('/api/v1/health', (req, res) => {
-  res.json({ status: 'ok', platform: 'YOUR TIME TRADE API', timestamp: new Date() });
+  res.json({ status: 'ok', platform: 'TIME TRADE API', timestamp: new Date() });
 });
 
 // API V1 Routes
@@ -72,7 +72,7 @@ async function autoMigrateDatabase() {
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(config.port, () => {
-    console.log(`🚀 YOUR TIME TRADE Backend Server running on http://localhost:${config.port}`);
+    console.log(`🚀 TIME TRADE Backend Server running on http://localhost:${config.port}`);
     autoMigrateDatabase();
   });
 }

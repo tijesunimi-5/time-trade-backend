@@ -125,9 +125,41 @@ export const createTask = async (req: AuthenticatedRequest, res: Response) => {
 export const updateTask = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const {
+      dayId,
+      templateId,
+      resourceId,
+      title,
+      description,
+      pillar,
+      taskType,
+      isNonNegotiable,
+      pageRange,
+      timestampRange,
+      discussionQuestions,
+      durationMinutes,
+      isActive,
+    } = req.body;
+
+    const dataToUpdate: any = {};
+    if (dayId !== undefined) dataToUpdate.dayId = dayId || null;
+    if (templateId !== undefined) dataToUpdate.templateId = templateId || null;
+    if (resourceId !== undefined) dataToUpdate.resourceId = resourceId || null;
+    if (title !== undefined) dataToUpdate.title = title;
+    if (description !== undefined) dataToUpdate.description = description;
+    if (pillar !== undefined) dataToUpdate.pillar = pillar;
+    if (taskType !== undefined) dataToUpdate.taskType = taskType;
+    if (isNonNegotiable !== undefined) dataToUpdate.isNonNegotiable = !!isNonNegotiable;
+    if (pageRange !== undefined) dataToUpdate.pageRange = pageRange || null;
+    if (timestampRange !== undefined) dataToUpdate.timestampRange = timestampRange || null;
+    if (discussionQuestions !== undefined) dataToUpdate.discussionQuestions = discussionQuestions || null;
+    if (durationMinutes !== undefined) dataToUpdate.durationMinutes = durationMinutes ? parseInt(durationMinutes, 10) : undefined;
+    if (isActive !== undefined) dataToUpdate.isActive = !!isActive;
+
     const task = await prisma.task.update({
       where: { id },
-      data: req.body,
+      data: dataToUpdate,
+      include: { resource: true },
     });
     return res.json({ task });
   } catch (error: any) {

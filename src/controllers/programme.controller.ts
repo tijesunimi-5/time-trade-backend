@@ -22,9 +22,88 @@ function getDayNumberFromDate(startDateStr: string, targetDateStr: string): numb
   return diffDays + 1;
 }
 
-export const getCurrentProgramme = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const programme = await prisma.programme.findFirst({
+// Helper: Ensure an active programme exists in database, or create default 90-day architecture
+export async function getOrEnsureActiveProgramme() {
+  let programme = await prisma.programme.findFirst({
+    where: { isActive: true },
+    include: {
+      phases: {
+        orderBy: { phaseNumber: 'asc' },
+        include: {
+          weeks: {
+            orderBy: { weekNumber: 'asc' },
+            include: {
+              days: {
+                orderBy: { dayNumber: 'asc' },
+                include: {
+                  tasks: {
+                    where: { isActive: true },
+                    include: { resource: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!programme) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    await prisma.programme.create({
+      data: {
+        title: 'TIME TRADE 90-Day Personal Growth Challenge',
+        description: 'A structured 90-day personal growth journey across Reset, Restart, and Refocus phases.',
+        startDate: todayStr,
+        isActive: true,
+        phases: {
+          create: [
+            {
+              phaseNumber: 1,
+              title: 'RESET',
+              objective: 'Examine patterns, habits, and spiritual & mental foundation.',
+              weeks: {
+                create: [
+                  { weekNumber: 1, theme: 'Reset Your Mindset', anchorResource: 'Mindset by Carol Dweck' },
+                  { weekNumber: 2, theme: 'Examine Habits & Routines', anchorResource: 'Atomic Habits by James Clear' },
+                  { weekNumber: 3, theme: 'Spiritual Alignment & Reflection', anchorResource: 'The Power of Momentary Quiet' },
+                  { weekNumber: 4, theme: 'Emotional & Relational Audit', anchorResource: 'Emotional Intelligence 2.0' },
+                ],
+              },
+            },
+            {
+              phaseNumber: 2,
+              title: 'RESTART',
+              objective: 'Rebuild healthier habits, discipline, and execution systems.',
+              weeks: {
+                create: [
+                  { weekNumber: 5, theme: 'Building Core Routines', anchorResource: 'Deep Work by Cal Newport' },
+                  { weekNumber: 6, theme: 'Physical & Mental Energy', anchorResource: 'Why We Sleep by Matthew Walker' },
+                  { weekNumber: 7, theme: 'Time & Attention Management', anchorResource: 'Essentialism by Greg McKeown' },
+                  { weekNumber: 8, theme: 'Financial Responsibility & Stewardship', anchorResource: 'The Total Money Makeover' },
+                ],
+              },
+            },
+            {
+              phaseNumber: 3,
+              title: 'REFOCUS',
+              objective: 'Align long-term vision, legacy, and continuous growth.',
+              weeks: {
+                create: [
+                  { weekNumber: 9, theme: 'Vision & Long-Term Purpose', anchorResource: 'Start with Why by Simon Sinek' },
+                  { weekNumber: 10, theme: 'Relational & Community Stewardship', anchorResource: 'The 7 Habits of Highly Effective People' },
+                  { weekNumber: 11, theme: 'Consistency Under Pressure', anchorResource: 'Grit by Angela Duckworth' },
+                  { weekNumber: 12, theme: 'Legacy & Sustained Growth', anchorResource: 'Finishing Well' },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    programme = await prisma.programme.findFirst({
       where: { isActive: true },
       include: {
         phases: {
@@ -32,15 +111,30 @@ export const getCurrentProgramme = async (req: AuthenticatedRequest, res: Respon
           include: {
             weeks: {
               orderBy: { weekNumber: 'asc' },
+              include: {
+                days: {
+                  orderBy: { dayNumber: 'asc' },
+                  include: {
+                    tasks: {
+                      where: { isActive: true },
+                      include: { resource: true },
+                    },
+                  },
+                },
+              },
             },
           },
         },
       },
     });
+  }
 
-    if (!programme) {
-      return res.status(404).json({ error: 'No active programme found' });
-    }
+  return programme!;
+}
+
+export const getCurrentProgramme = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const programme = await getOrEnsureActiveProgramme();
 
     const todayStr = new Date().toISOString().split('T')[0];
     const rawDayNumber = getDayNumberFromDate(programme.startDate, todayStr);
@@ -82,8 +176,7 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
     const requestedDayNum = req.query.day ? parseInt(req.query.day as string, 10) : undefined;
     const requestedDateStr = req.query.date as string;
 
-    const programme = await prisma.programme.findFirst({ where: { isActive: true } });
-    if (!programme) return res.status(404).json({ error: 'No active programme found' });
+    const programme = await getOrEnsureActiveProgramme();
 
     const todayStr = new Date().toISOString().split('T')[0];
     const activeTodayDayNum = getDayNumberFromDate(programme.startDate, todayStr);
@@ -200,31 +293,7 @@ export const getCalendarOverview = async (req: AuthenticatedRequest, res: Respon
   try {
     const userId = req.user?.userId;
 
-    const programme = await prisma.programme.findFirst({
-      where: { isActive: true },
-      include: {
-        phases: {
-          orderBy: { phaseNumber: 'asc' },
-          include: {
-            weeks: {
-              orderBy: { weekNumber: 'asc' },
-              include: {
-                days: {
-                  orderBy: { dayNumber: 'asc' },
-                  include: {
-                    tasks: {
-                      select: { id: true, isNonNegotiable: true },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!programme) return res.status(404).json({ error: 'No active programme found' });
+    const programme = await getOrEnsureActiveProgramme();
 
     const todayStr = new Date().toISOString().split('T')[0];
     const currentDayNum = getDayNumberFromDate(programme.startDate, todayStr);
@@ -349,30 +418,7 @@ export const deletePersonalTask = async (req: AuthenticatedRequest, res: Respons
 
 export const getAdminProgrammeTree = async (req: Request, res: Response) => {
   try {
-    const programme = await prisma.programme.findFirst({
-      where: { isActive: true },
-      include: {
-        phases: {
-          orderBy: { phaseNumber: 'asc' },
-          include: {
-            weeks: {
-              orderBy: { weekNumber: 'asc' },
-              include: {
-                days: {
-                  orderBy: { dayNumber: 'asc' },
-                  include: {
-                    tasks: {
-                      include: { resource: true, template: true },
-                      orderBy: { displayOrder: 'asc' },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
+    const programme = await getOrEnsureActiveProgramme();
 
     const templates = await prisma.taskTemplate.findMany({
       orderBy: { createdAt: 'desc' },
@@ -484,3 +530,24 @@ export const assignTaskToDay = async (req: Request, res: Response) => {
     return res.status(500).json({ error: error.message || 'Failed to assign task to day' });
   }
 };
+
+export const deleteTaskTemplate = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.taskTemplate.delete({ where: { id } });
+    return res.json({ message: 'Task template deleted successfully' });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to delete template' });
+  }
+};
+
+export const deleteResource = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.resource.delete({ where: { id } });
+    return res.json({ message: 'Resource deleted successfully' });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to delete resource' });
+  }
+};
+
