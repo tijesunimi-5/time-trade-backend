@@ -26,6 +26,7 @@ model User {
   notesWritten        FollowUpNote[]       @relation("AuthorNotes")
   notesReceived       FollowUpNote[]       @relation("TargetNotes")
   testimonials        Testimonial[]
+  personalTasks       ParticipantPersonalTask[]
 }
 
 model Profile {
@@ -41,27 +42,128 @@ model Profile {
   updatedAt    DateTime @updatedAt
 }
 
+model Programme {
+  id          String           @id @default(uuid())
+  title       String
+  description String?          @db.Text
+  startDate   String           // Format: YYYY-MM-DD e.g. "2026-09-27"
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  phases ProgrammePhase[]
+}
+
+model ProgrammePhase {
+  id           String          @id @default(uuid())
+  programmeId  String
+  programme    Programme       @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  title        String          // e.g. "RESET", "RESTART", "REFOCUS"
+  phaseNumber  Int             // 1, 2, 3
+  durationDays Int             @default(30)
+  objective    String?         @db.Text
+  isUnlocked   Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+
+  weeks ProgrammeWeek[]
+}
+
+model ProgrammeWeek {
+  id             String         @id @default(uuid())
+  phaseId        String
+  phase          ProgrammePhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  weekNumber     Int            // 1, 2, 3, 4
+  theme          String         // e.g. "Reset Your Mindset"
+  objective      String?        @db.Text
+  keyAreas       String?        @db.Text
+  anchorResource String?        // e.g. "Mindset by Carol Dweck"
+
+  days ProgrammeDay[]
+}
+
+model ProgrammeDay {
+  id        String        @id @default(uuid())
+  weekId    String
+  week      ProgrammeWeek @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  dayNumber Int           // 1..90
+  dayOfWeek String?       // "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"
+  title     String?       // e.g. "Day 1: Pausing Friction"
+  focus     String?       @db.Text
+
+  tasks Task[]
+}
+
+model Resource {
+  id           String   @id @default(uuid())
+  title        String
+  type         String   // BOOK, PODCAST, SERMON, VIDEO, ARTICLE, DOCUMENT, EXTERNAL_LINK
+  author       String?
+  url          String?
+  contentNotes String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  tasks Task[]
+}
+
+model TaskTemplate {
+  id                     String   @id @default(uuid())
+  title                  String
+  description            String?  @db.Text
+  taskType               String   @default("GROWTH") // NON_NEGOTIABLE, GROWTH, LEARNING, COMMUNITY, PERSONAL, EVENT
+  pillar                 String   @default("SPIRITUAL") // SPIRITUAL, MENTAL, SOCIAL
+  defaultRequired        Boolean  @default(true)
+  defaultDurationMinutes Int      @default(15)
+  iconCategory           String?
+  isActive               Boolean  @default(true)
+  createdAt              DateTime @default(now())
+
+  tasks Task[]
+}
+
 model Task {
-  id              String   @id @default(uuid())
-  title           String
-  description     String   @db.Text
-  pillar          String   // SPIRITUAL, SOCIAL, MENTAL
-  category        String?
-  frequencyType   String   @default("DAILY") // DAILY, WEEKLY, BIWEEKLY, MONTHLY, ONE_TIME, RECURRING
-  isNonNegotiable Boolean  @default(false)
-  isOptional      Boolean  @default(false)
-  dayNumber       Int?
-  weekNumber      Int?
-  startDate       String?
-  endDate         String?
-  resourceUrl     String?
-  instructions    String?  @db.Text
-  durationMinutes Int?     @default(15)
-  isActive        Boolean  @default(true)
-  displayOrder    Int      @default(0)
-  createdAt       DateTime @default(now())
+  id                   String        @id @default(uuid())
+  dayId                String?
+  day                  ProgrammeDay? @relation(fields: [dayId], references: [id], onDelete: SetNull)
+  templateId           String?
+  template             TaskTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  resourceId           String?
+  resource             Resource?     @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+  title                String
+  description          String        @db.Text
+  taskType             String        @default("GROWTH") // NON_NEGOTIABLE, GROWTH, LEARNING, COMMUNITY, PERSONAL, EVENT
+  pillar               String        // SPIRITUAL, SOCIAL, MENTAL
+  category             String?
+  frequencyType        String        @default("DAILY") // DAILY, WEEKLY, BIWEEKLY, MONTHLY, ONE_TIME, RECURRING
+  isNonNegotiable      Boolean       @default(false)
+  isOptional           Boolean       @default(false)
+  isRequired           Boolean       @default(true)
+  dayNumber            Int?
+  weekNumber           Int?
+  startDate            String?
+  endDate              String?
+  pageRange            String?       // e.g. "Chapter 2, pp. 15–30"
+  timestampRange       String?       // e.g. "12:30 – 28:40"
+  resourceUrl          String?
+  instructions         String?       @db.Text
+  discussionQuestions  String?       @db.Text
+  durationMinutes      Int?          @default(15)
+  isActive             Boolean       @default(true)
+  displayOrder         Int           @default(0)
+  createdAt            DateTime      @default(now())
 
   completions TaskCompletion[]
+}
+
+model ParticipantPersonalTask {
+  id              String   @id @default(uuid())
+  participantId   String
+  user            User     @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  title           String
+  category        String   @default("Personal")
+  frequency       String   @default("DAILY")
+  durationMinutes Int      @default(30)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
 }
 
 model TaskCompletion {

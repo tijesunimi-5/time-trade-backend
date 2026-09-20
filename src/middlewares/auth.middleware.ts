@@ -22,6 +22,20 @@ export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: 
   return res.status(401).json({ error: 'Authorization header required' });
 };
 
+export const optionalJWT = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = verifyToken(token);
+      req.user = decoded;
+    } catch (err) {
+      // Ignore token errors for optional auth
+    }
+  }
+  next();
+};
+
 export const requireRole = (allowedRoles: Array<string>) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {

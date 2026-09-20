@@ -7,6 +7,7 @@ import progressRoutes from './routes/progress.routes';
 import followupRoutes from './routes/followup.routes';
 import leaderboardRoutes from './routes/leaderboard.routes';
 import calendarRoutes from './routes/calendar.routes';
+import programmeRoutes from './routes/programme.routes';
 import testimonialRoutes from './routes/testimonial.routes';
 import adminRoutes from './routes/admin.routes';
 import { errorHandler } from './middlewares/error.middleware';
@@ -32,6 +33,7 @@ app.use('/api/v1/progress', progressRoutes);
 app.use('/api/v1/followup', followupRoutes);
 app.use('/api/v1/leaderboard', leaderboardRoutes);
 app.use('/api/v1/calendar', calendarRoutes);
+app.use('/api/v1/programme', programmeRoutes);
 app.use('/api/v1/testimonials', testimonialRoutes);
 app.use('/api/v1/admin', adminRoutes);
 

@@ -52,7 +52,13 @@ export const toggleTaskCompletion = async (req: AuthenticatedRequest, res: Respo
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { taskId, completionDate, notes } = req.body;
-    const dateStr = completionDate || new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toISOString().split('T')[0];
+    const dateStr = completionDate || todayStr;
+
+    // Interaction Guard: Cannot complete future days
+    if (dateStr > todayStr) {
+      return res.status(400).json({ error: 'You cannot complete tasks for future days in advance.' });
+    }
 
     // Check if task exists
     const task = await prisma.task.findUnique({ where: { id: taskId } });
