@@ -119,6 +119,7 @@ async function seed() {
         phaseId: wt.phase.id,
         weekNumber: wt.num,
         theme: wt.theme,
+        anchorResource: null,
       },
     });
 
@@ -132,7 +133,7 @@ async function seed() {
           weekId: weekObj.id,
           dayNumber: dayNum,
           dayOfWeek,
-          title: `Day ${dayNum}: ${wt.theme}`,
+          title: `Day ${dayNum}`,
           focus: `Daily growth focus for ${wt.theme}`,
         },
       });

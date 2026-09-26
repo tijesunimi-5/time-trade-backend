@@ -65,10 +65,10 @@ export async function getOrEnsureActiveProgramme() {
               objective: 'Examine patterns, habits, and spiritual & mental foundation.',
               weeks: {
                 create: [
-                  { weekNumber: 1, theme: 'Reset Your Mindset', anchorResource: 'Mindset by Carol Dweck' },
-                  { weekNumber: 2, theme: 'Examine Habits & Routines', anchorResource: 'Atomic Habits by James Clear' },
-                  { weekNumber: 3, theme: 'Spiritual Alignment & Reflection', anchorResource: 'The Power of Momentary Quiet' },
-                  { weekNumber: 4, theme: 'Emotional & Relational Audit', anchorResource: 'Emotional Intelligence 2.0' },
+                  { weekNumber: 1, theme: 'Reset Your Mindset' },
+                  { weekNumber: 2, theme: 'Examine Habits & Routines' },
+                  { weekNumber: 3, theme: 'Spiritual Alignment & Reflection' },
+                  { weekNumber: 4, theme: 'Emotional & Relational Audit' },
                 ],
               },
             },
@@ -78,10 +78,10 @@ export async function getOrEnsureActiveProgramme() {
               objective: 'Rebuild healthier habits, discipline, and execution systems.',
               weeks: {
                 create: [
-                  { weekNumber: 5, theme: 'Building Core Routines', anchorResource: 'Deep Work by Cal Newport' },
-                  { weekNumber: 6, theme: 'Physical & Mental Energy', anchorResource: 'Why We Sleep by Matthew Walker' },
-                  { weekNumber: 7, theme: 'Time & Attention Management', anchorResource: 'Essentialism by Greg McKeown' },
-                  { weekNumber: 8, theme: 'Financial Responsibility & Stewardship', anchorResource: 'The Total Money Makeover' },
+                  { weekNumber: 5, theme: 'Building Core Routines' },
+                  { weekNumber: 6, theme: 'Physical & Mental Energy' },
+                  { weekNumber: 7, theme: 'Time & Attention Management' },
+                  { weekNumber: 8, theme: 'Financial Responsibility & Stewardship' },
                 ],
               },
             },
@@ -91,10 +91,10 @@ export async function getOrEnsureActiveProgramme() {
               objective: 'Align long-term vision, legacy, and continuous growth.',
               weeks: {
                 create: [
-                  { weekNumber: 9, theme: 'Vision & Long-Term Purpose', anchorResource: 'Start with Why by Simon Sinek' },
-                  { weekNumber: 10, theme: 'Relational & Community Stewardship', anchorResource: 'The 7 Habits of Highly Effective People' },
-                  { weekNumber: 11, theme: 'Consistency Under Pressure', anchorResource: 'Grit by Angela Duckworth' },
-                  { weekNumber: 12, theme: 'Legacy & Sustained Growth', anchorResource: 'Finishing Well' },
+                  { weekNumber: 9, theme: 'Vision & Long-Term Purpose' },
+                  { weekNumber: 10, theme: 'Relational & Community Stewardship' },
+                  { weekNumber: 11, theme: 'Consistency Under Pressure' },
+                  { weekNumber: 12, theme: 'Legacy & Sustained Growth' },
                 ],
               },
             },
