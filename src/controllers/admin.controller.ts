@@ -335,33 +335,25 @@ export const getDynamicFormFields = async (req: Request, res: Response) => {
       },
     });
 
-    if (!publishedForm) {
-      // 2. Check for legacy standalone active fields if no form model used
-      const standaloneFields = await prisma.dynamicFormField.findMany({
-        where: { formId: null, isActive: true },
-        orderBy: { displayOrder: 'asc' },
-      });
-
-      if (standaloneFields.length > 0) {
-        return res.json({
-          isPublished: true,
-          formTitle: 'Registration Questionnaire',
-          fields: standaloneFields,
-        });
-      }
-
+    if (publishedForm) {
       return res.json({
-        isPublished: false,
-        formTitle: null,
-        fields: [],
+        isPublished: true,
+        formTitle: publishedForm.title,
+        formDescription: publishedForm.description,
+        fields: publishedForm.fields,
       });
     }
 
+    // 2. Fallback: Return all dynamic form fields in database so admin answer viewer can resolve questions
+    const allFields = await prisma.dynamicFormField.findMany({
+      where: { isActive: true },
+      orderBy: { displayOrder: 'asc' },
+    });
+
     return res.json({
-      isPublished: true,
-      formTitle: publishedForm.title,
-      formDescription: publishedForm.description,
-      fields: publishedForm.fields,
+      isPublished: false,
+      formTitle: allFields.length > 0 ? 'Custom Registration Questionnaire' : null,
+      fields: allFields,
     });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to fetch dynamic fields' });
