@@ -161,12 +161,208 @@ export const approveTestimonial = async (req: Request, res: Response) => {
   }
 };
 
+// --- DYNAMIC FORM & REGISTRATION QUESTION BUILDER (SAVE, PUBLISH, UNPUBLISH, VERSIONING) ---
+
+export const getAllForms = async (req: Request, res: Response) => {
+  try {
+    const forms = await prisma.dynamicForm.findMany({
+      include: {
+        fields: {
+          orderBy: { displayOrder: 'asc' },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return res.json({ forms });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to fetch forms' });
+  }
+};
+
+export const saveForm = async (req: Request, res: Response) => {
+  try {
+    const { id, title, description, fields } = req.body;
+
+    if (!title || title.trim() === '') {
+      return res.status(400).json({ error: 'Form title is required' });
+    }
+
+    let form;
+    if (id) {
+      // Update existing form info
+      form = await prisma.dynamicForm.update({
+        where: { id },
+        data: {
+          title,
+          description,
+        },
+      });
+
+      // Sync questions: Delete old fields & recreate specified fields
+      if (Array.isArray(fields)) {
+        await prisma.dynamicFormField.deleteMany({
+          where: { formId: id },
+        });
+
+        await Promise.all(
+          fields.map((f: any, index: number) => {
+            const stringifiedOptions = typeof f.options === 'object' ? JSON.stringify(f.options) : f.options;
+            return prisma.dynamicFormField.create({
+              data: {
+                formId: id,
+                fieldName: f.fieldName || `q_${Date.now()}_${index}`,
+                label: f.label,
+                fieldType: f.fieldType || 'text',
+                isRequired: !!f.isRequired,
+                options: stringifiedOptions || undefined,
+                displayOrder: typeof f.displayOrder === 'number' ? f.displayOrder : index + 1,
+                isActive: f.isActive !== false,
+              },
+            });
+          })
+        );
+      }
+    } else {
+      // Create new Form as Draft (isPublished: false)
+      const formattedFields = Array.isArray(fields)
+        ? fields.map((f: any, index: number) => {
+            const stringifiedOptions = typeof f.options === 'object' ? JSON.stringify(f.options) : f.options;
+            return {
+              fieldName: f.fieldName || `q_${Date.now()}_${index}`,
+              label: f.label,
+              fieldType: f.fieldType || 'text',
+              isRequired: !!f.isRequired,
+              options: stringifiedOptions || undefined,
+              displayOrder: typeof f.displayOrder === 'number' ? f.displayOrder : index + 1,
+              isActive: f.isActive !== false,
+            };
+          })
+        : [];
+
+      form = await prisma.dynamicForm.create({
+        data: {
+          title,
+          description,
+          isPublished: false,
+          fields: {
+            create: formattedFields,
+          },
+        },
+      });
+    }
+
+    const savedForm = await prisma.dynamicForm.findUnique({
+      where: { id: form.id },
+      include: {
+        fields: {
+          orderBy: { displayOrder: 'asc' },
+        },
+      },
+    });
+
+    return res.status(200).json({ message: 'Form saved successfully', form: savedForm });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to save form' });
+  }
+};
+
+export const publishForm = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const targetForm = await prisma.dynamicForm.findUnique({ where: { id } });
+    if (!targetForm) {
+      return res.status(404).json({ error: 'Form not found' });
+    }
+
+    // Unpublish all forms first (only 1 published form active at a time)
+    await prisma.dynamicForm.updateMany({
+      data: { isPublished: false },
+    });
+
+    // Publish target form
+    const publishedForm = await prisma.dynamicForm.update({
+      where: { id },
+      data: { isPublished: true },
+      include: {
+        fields: {
+          orderBy: { displayOrder: 'asc' },
+        },
+      },
+    });
+
+    return res.json({ message: `"${publishedForm.title}" is now LIVE for public registration.`, form: publishedForm });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to publish form' });
+  }
+};
+
+export const unpublishForm = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const unpublishedForm = await prisma.dynamicForm.update({
+      where: { id },
+      data: { isPublished: false },
+    });
+
+    return res.json({ message: `"${unpublishedForm.title}" has been UNPUBLISHED. Public registration is now closed.`, form: unpublishedForm });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to unpublish form' });
+  }
+};
+
+export const deleteForm = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.dynamicForm.delete({ where: { id } });
+    return res.json({ message: 'Form deleted successfully' });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to delete form' });
+  }
+};
+
 export const getDynamicFormFields = async (req: Request, res: Response) => {
   try {
-    const fields = await prisma.dynamicFormField.findMany({
-      orderBy: { displayOrder: 'asc' },
+    // 1. Look for active published form
+    const publishedForm = await prisma.dynamicForm.findFirst({
+      where: { isPublished: true },
+      include: {
+        fields: {
+          where: { isActive: true },
+          orderBy: { displayOrder: 'asc' },
+        },
+      },
     });
-    return res.json({ fields });
+
+    if (!publishedForm) {
+      // 2. Check for legacy standalone active fields if no form model used
+      const standaloneFields = await prisma.dynamicFormField.findMany({
+        where: { formId: null, isActive: true },
+        orderBy: { displayOrder: 'asc' },
+      });
+
+      if (standaloneFields.length > 0) {
+        return res.json({
+          isPublished: true,
+          formTitle: 'Registration Questionnaire',
+          fields: standaloneFields,
+        });
+      }
+
+      return res.json({
+        isPublished: false,
+        formTitle: null,
+        fields: [],
+      });
+    }
+
+    return res.json({
+      isPublished: true,
+      formTitle: publishedForm.title,
+      formDescription: publishedForm.description,
+      fields: publishedForm.fields,
+    });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to fetch dynamic fields' });
   }
@@ -174,7 +370,7 @@ export const getDynamicFormFields = async (req: Request, res: Response) => {
 
 export const createDynamicFormField = async (req: Request, res: Response) => {
   try {
-    const { fieldName, label, fieldType, isRequired, options, displayOrder, isActive } = req.body;
+    const { formId, fieldName, label, fieldType, isRequired, options, displayOrder, isActive } = req.body;
     
     if (!label || !fieldType) {
       return res.status(400).json({ error: 'Question label and answer type are required' });
@@ -185,6 +381,7 @@ export const createDynamicFormField = async (req: Request, res: Response) => {
 
     const field = await prisma.dynamicFormField.create({
       data: {
+        formId: formId || undefined,
         fieldName: generatedKey,
         label,
         fieldType,
@@ -238,7 +435,7 @@ export const deleteDynamicFormField = async (req: Request, res: Response) => {
 
 export const reorderDynamicFormFields = async (req: Request, res: Response) => {
   try {
-    const { fieldOrders } = req.body; // Array of { id: string, displayOrder: number }
+    const { fieldOrders } = req.body;
     if (!Array.isArray(fieldOrders)) {
       return res.status(400).json({ error: 'fieldOrders array required' });
     }

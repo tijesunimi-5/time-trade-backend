@@ -244,15 +244,29 @@ model Testimonial {
   submittedAt DateTime @default(now())
 }
 
+model DynamicForm {
+  id          String   @id @default(uuid())
+  title       String   // e.g. "Cohort Intake Questionnaire"
+  description String?  @db.Text
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  fields DynamicFormField[]
+}
+
 model DynamicFormField {
-  id           String   @id @default(uuid())
-  fieldName    String   @unique
+  id           String       @id @default(uuid())
+  formId       String?
+  form         DynamicForm? @relation(fields: [formId], references: [id], onDelete: Cascade)
+  fieldName    String
   label        String
-  fieldType    String   // text, select, textarea, checkbox, date
-  isRequired   Boolean  @default(false)
-  options      String?  @db.Text // JSON stringified options
-  displayOrder Int      @default(0)
-  isActive     Boolean  @default(true)
+  fieldType    String       // text, select, textarea, multiselect, date
+  isRequired   Boolean      @default(false)
+  options      String?      @db.Text // JSON stringified options
+  displayOrder Int          @default(0)
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
 }
 
 model SystemSettings {

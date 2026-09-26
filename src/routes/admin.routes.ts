@@ -10,6 +10,11 @@ import {
   updateDynamicFormField,
   deleteDynamicFormField,
   reorderDynamicFormFields,
+  getAllForms,
+  saveForm,
+  publishForm,
+  unpublishForm,
+  deleteForm,
   updateSystemSettings,
   updateUserRoles,
 } from '../controllers/admin.controller';
@@ -45,7 +50,14 @@ router.get('/overview', getAdminOverview);
 router.get('/participants', getAllParticipants);
 router.get('/testimonials/pending', getPendingTestimonials);
 
-// Form Builder Mutations (Restricted to Leadership, Community Management, Follow-Up)
+// Form Management & Versioning Routes (Draft, Save, Publish, Unpublish)
+router.get('/forms', requireRole(FORM_BUILDER_ROLES), getAllForms);
+router.post('/forms/save', requireRole(FORM_BUILDER_ROLES), saveForm);
+router.post('/forms/:id/publish', requireRole(FORM_BUILDER_ROLES), publishForm);
+router.post('/forms/:id/unpublish', requireRole(FORM_BUILDER_ROLES), unpublishForm);
+router.delete('/forms/:id', requireRole(FORM_BUILDER_ROLES), deleteForm);
+
+// Legacy/Individual Field Mutations
 router.post('/forms/fields', requireRole(FORM_BUILDER_ROLES), createDynamicFormField);
 router.put('/forms/fields/reorder', requireRole(FORM_BUILDER_ROLES), reorderDynamicFormFields);
 router.put('/forms/fields/:id', requireRole(FORM_BUILDER_ROLES), updateDynamicFormField);
