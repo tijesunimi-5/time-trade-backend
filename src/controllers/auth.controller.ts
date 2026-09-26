@@ -32,6 +32,10 @@ export const registerParticipant = async (req: Request, res: Response) => {
 
     const { email, fullName, phone, birthday, ageRange, goals, expectations, customAnswers } = parseResult.data;
 
+    const finalPhone = phone || customAnswers?.phone || customAnswers?.['phone_number'] || customAnswers?.['WhatsApp / Phone'] || customAnswers?.['Phone'];
+    const finalBirthday = birthday || customAnswers?.birthday || customAnswers?.['Date of Birth'] || customAnswers?.['birthday'];
+    const finalExpectations = expectations || customAnswers?.expectations || customAnswers?.['Primary Expectations & Goals'] || customAnswers?.['expectations'];
+
     let user = await prisma.user.findUnique({
       where: { email },
       include: { profile: true, streak: true },
@@ -42,18 +46,18 @@ export const registerParticipant = async (req: Request, res: Response) => {
         await prisma.profile.upsert({
           where: { userId: user.id },
           update: {
-            birthday,
+            birthday: finalBirthday,
             ageRange,
             goals,
-            expectations,
+            expectations: finalExpectations,
             customAnswers: customAnswers ? JSON.stringify(customAnswers) : undefined,
           },
           create: {
             userId: user.id,
-            birthday,
+            birthday: finalBirthday,
             ageRange,
             goals,
-            expectations,
+            expectations: finalExpectations,
             customAnswers: customAnswers ? JSON.stringify(customAnswers) : undefined,
           },
         });
@@ -63,14 +67,14 @@ export const registerParticipant = async (req: Request, res: Response) => {
         data: {
           email,
           fullName,
-          phone,
+          phone: finalPhone,
           role: 'PARTICIPANT',
           profile: {
             create: {
-              birthday,
+              birthday: finalBirthday,
               ageRange,
               goals,
-              expectations,
+              expectations: finalExpectations,
               customAnswers: customAnswers ? JSON.stringify(customAnswers) : undefined,
             },
           },
