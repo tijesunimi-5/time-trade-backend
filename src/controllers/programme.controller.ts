@@ -111,15 +111,17 @@ export const getCurrentProgramme = async (req: AuthenticatedRequest, res: Respon
         title: programme.title,
         description: programme.description,
         startDate: programme.startDate,
+        isLive: programme.isLive,
       },
+      isLive: programme.isLive,
       todayDate: todayStr,
-      rawDayNumber,
-      currentDayNumber,
-      currentPhaseNumber,
-      currentWeekNumber,
-      currentPhaseTitle: currentPhase?.title || null,
-      currentWeekTheme: currentWeek?.theme || null,
-      anchorResource: currentWeek?.anchorResource || null,
+      rawDayNumber: programme.isLive ? rawDayNumber : 0,
+      currentDayNumber: programme.isLive ? currentDayNumber : 0,
+      currentPhaseNumber: programme.isLive ? currentPhaseNumber : 0,
+      currentWeekNumber: programme.isLive ? currentWeekNumber : 0,
+      currentPhaseTitle: programme.isLive ? (currentPhase?.title || null) : null,
+      currentWeekTheme: programme.isLive ? (currentWeek?.theme || null) : null,
+      anchorResource: programme.isLive ? (currentWeek?.anchorResource || null) : null,
       phases: programme.phases,
     });
   } catch (error: any) {
@@ -200,9 +202,10 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
       return true;
     });
 
-    // User completion & personal tasks
+    // User completion, personal tasks & daily journal note
     let completedTaskIds: string[] = [];
     let personalTasks: any[] = [];
+    let userJournalNote = '';
 
     if (userId) {
       const completions = await prisma.taskCompletion.findMany({
@@ -217,6 +220,16 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
       personalTasks = await prisma.participantPersonalTask.findMany({
         where: { participantId: userId, isActive: true },
       });
+
+      const noteObj = await prisma.dailyJournalNote.findUnique({
+        where: {
+          participantId_noteDate: {
+            participantId: userId,
+            noteDate: targetDateStr,
+          },
+        },
+      });
+      if (noteObj) userJournalNote = noteObj.content;
     }
 
     const tasksWithCompletion = allTasks.map(t => ({
@@ -228,18 +241,20 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
       dayNumber: targetDayNum,
       targetDate: targetDateStr,
       todayDate: todayStr,
-      isToday,
-      isPast,
-      isFuture,
-      isPhaseLocked,
+      isLive: programme.isLive,
+      isToday: programme.isLive ? isToday : false,
+      isPast: programme.isLive ? isPast : false,
+      isFuture: programme.isLive ? isFuture : true,
+      isPhaseLocked: programme.isLive ? isPhaseLocked : false,
       dayTitle: day?.title || `Day ${targetDayNum}`,
       dayFocus: day?.focus || null,
       weekNumber: day?.week.weekNumber || Math.ceil(targetDayNum / 7),
       weekTheme: day?.week.theme || null,
-      phaseTitle: day?.week.phase.title || (targetPhaseNum === 1 ? 'RESET' : targetPhaseNum === 2 ? 'RESTART' : 'REFOCUS'),
+      phaseTitle: day?.week.phase.title || null,
       phaseNumber: targetPhaseNum,
       tasks: tasksWithCompletion,
       personalTasks,
+      journalNote: userJournalNote,
     });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to fetch day details' });
@@ -664,6 +679,88 @@ export const getPublicResources = async (req: Request, res: Response) => {
     return res.json({ resources });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to fetch public resources' });
+  }
+};
+
+export const commenceProgramme = async (req: Request, res: Response) => {
+  try {
+    const { isLive, startDate } = req.body;
+    const programme = await getOrEnsureActiveProgramme();
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const newStartDate = startDate || todayStr;
+
+    const updatedProgramme = await prisma.programme.update({
+      where: { id: programme.id },
+      data: {
+        isLive: typeof isLive === 'boolean' ? isLive : true,
+        startDate: newStartDate,
+      },
+    });
+
+    return res.json({
+      message: updatedProgramme.isLive
+        ? '90-Day Challenge officially COMMENCED & LIVE for participants!'
+        : '90-Day Challenge status updated to DRAFT.',
+      programme: updatedProgramme,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to update challenge status' });
+  }
+};
+
+export const saveJournalNote = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { noteDate, dayNumber, content } = req.body;
+    const dateStr = noteDate || new Date().toISOString().split('T')[0];
+
+    const journalNote = await prisma.dailyJournalNote.upsert({
+      where: {
+        participantId_noteDate: {
+          participantId: userId,
+          noteDate: dateStr,
+        },
+      },
+      update: {
+        content: content || '',
+        dayNumber: dayNumber ? parseInt(dayNumber, 10) : undefined,
+      },
+      create: {
+        participantId: userId,
+        noteDate: dateStr,
+        dayNumber: dayNumber ? parseInt(dayNumber, 10) : undefined,
+        content: content || '',
+      },
+    });
+
+    return res.json({ message: 'Journal reflection saved successfully', journalNote });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to save journal note' });
+  }
+};
+
+export const getJournalNote = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const dateStr = (req.query.date as string) || new Date().toISOString().split('T')[0];
+
+    const journalNote = await prisma.dailyJournalNote.findUnique({
+      where: {
+        participantId_noteDate: {
+          participantId: userId,
+          noteDate: dateStr,
+        },
+      },
+    });
+
+    return res.json({ journalNote: journalNote?.content || '' });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to fetch journal note' });
   }
 };
 

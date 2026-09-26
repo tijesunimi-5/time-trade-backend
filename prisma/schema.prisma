@@ -27,6 +27,7 @@ model User {
   notesReceived       FollowUpNote[]       @relation("TargetNotes")
   testimonials        Testimonial[]
   personalTasks       ParticipantPersonalTask[]
+  dailyJournalNotes   DailyJournalNote[]
 }
 
 model Profile {
@@ -48,6 +49,7 @@ model Programme {
   description String?          @db.Text
   startDate   String           // Format: YYYY-MM-DD e.g. "2026-09-27"
   isActive    Boolean          @default(true)
+  isLive      Boolean          @default(false)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
@@ -273,4 +275,17 @@ model SystemSettings {
   id                        String   @id @default("global")
   isAdminRegistrationActive Boolean  @default(true)
   updatedAt                 DateTime @updatedAt
+}
+
+model DailyJournalNote {
+  id            String   @id @default(uuid())
+  participantId String
+  user          User     @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  noteDate      String   // YYYY-MM-DD
+  dayNumber     Int?
+  content       String   @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([participantId, noteDate])
 }

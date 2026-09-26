@@ -18,6 +18,9 @@ import {
   createOrUpdateDay,
   deleteDay,
   getPublicResources,
+  commenceProgramme,
+  saveJournalNote,
+  getJournalNote,
 } from '../controllers/programme.controller';
 import { authenticateJWT, optionalJWT, requireRole } from '../middlewares/auth.middleware';
 
@@ -29,12 +32,15 @@ router.get('/day', optionalJWT, getDayDetails);
 router.get('/calendar', optionalJWT, getCalendarOverview);
 router.get('/resources', optionalJWT, getPublicResources);
 
-// Personal Habits / Custom Tasks
+// Participant Journal Notes & Personal Tasks
+router.get('/journal', authenticateJWT, getJournalNote);
+router.post('/journal', authenticateJWT, saveJournalNote);
 router.post('/personal-task', authenticateJWT, addPersonalTask);
 router.delete('/personal-task/:id', authenticateJWT, deletePersonalTask);
 
 // Admin CMS Routes (Curators: PROGRAM_PLANNING, LEADERSHIP, ADMIN)
 router.get('/admin/tree', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), getAdminProgrammeTree);
+router.post('/admin/commence', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), commenceProgramme);
 router.post('/admin/phase', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), createOrUpdatePhase);
 router.delete('/admin/phase/:id', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), deletePhase);
 router.post('/admin/week', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), createOrUpdateWeek);
