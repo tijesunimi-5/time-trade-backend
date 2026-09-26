@@ -17,6 +17,7 @@ import {
   deleteWeek,
   createOrUpdateDay,
   deleteDay,
+  getPublicResources,
 } from '../controllers/programme.controller';
 import { authenticateJWT, optionalJWT, requireRole } from '../middlewares/auth.middleware';
 
@@ -26,6 +27,7 @@ const router = Router();
 router.get('/current', optionalJWT, getCurrentProgramme);
 router.get('/day', optionalJWT, getDayDetails);
 router.get('/calendar', optionalJWT, getCalendarOverview);
+router.get('/resources', optionalJWT, getPublicResources);
 
 // Personal Habits / Custom Tasks
 router.post('/personal-task', authenticateJWT, addPersonalTask);

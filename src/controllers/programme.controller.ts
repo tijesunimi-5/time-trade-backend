@@ -117,9 +117,9 @@ export const getCurrentProgramme = async (req: AuthenticatedRequest, res: Respon
       currentDayNumber,
       currentPhaseNumber,
       currentWeekNumber,
-      currentPhaseTitle: currentPhase?.title || 'RESET',
-      currentWeekTheme: currentWeek?.theme || 'Reset Your Mindset',
-      anchorResource: currentWeek?.anchorResource || 'Mindset by Carol Dweck',
+      currentPhaseTitle: currentPhase?.title || null,
+      currentWeekTheme: currentWeek?.theme || null,
+      anchorResource: currentWeek?.anchorResource || null,
       phases: programme.phases,
     });
   } catch (error: any) {
@@ -653,6 +653,17 @@ export const deleteDay = async (req: Request, res: Response) => {
     return res.json({ message: 'Day deleted successfully' });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to delete day' });
+  }
+};
+
+export const getPublicResources = async (req: Request, res: Response) => {
+  try {
+    const resources = await prisma.resource.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    return res.json({ resources });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to fetch public resources' });
   }
 };
 
