@@ -11,6 +11,12 @@ import {
   assignTaskToDay,
   deleteTaskTemplate,
   deleteResource,
+  createOrUpdatePhase,
+  deletePhase,
+  createOrUpdateWeek,
+  deleteWeek,
+  createOrUpdateDay,
+  deleteDay,
 } from '../controllers/programme.controller';
 import { authenticateJWT, optionalJWT, requireRole } from '../middlewares/auth.middleware';
 
@@ -27,6 +33,12 @@ router.delete('/personal-task/:id', authenticateJWT, deletePersonalTask);
 
 // Admin CMS Routes (Curators: PROGRAM_PLANNING, LEADERSHIP, ADMIN)
 router.get('/admin/tree', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), getAdminProgrammeTree);
+router.post('/admin/phase', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), createOrUpdatePhase);
+router.delete('/admin/phase/:id', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), deletePhase);
+router.post('/admin/week', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), createOrUpdateWeek);
+router.delete('/admin/week/:id', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), deleteWeek);
+router.post('/admin/day', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), createOrUpdateDay);
+router.delete('/admin/day/:id', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), deleteDay);
 router.post('/admin/template', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), createOrUpdateTaskTemplate);
 router.delete('/admin/template/:id', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), deleteTaskTemplate);
 router.post('/admin/resource', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), createOrUpdateResource);

@@ -54,52 +54,9 @@ export async function getOrEnsureActiveProgramme() {
     await prisma.programme.create({
       data: {
         title: 'TIME TRADE 90-Day Personal Growth Challenge',
-        description: 'A structured 90-day personal growth journey across Reset, Restart, and Refocus phases.',
+        description: 'A structured personal growth journey configured dynamically.',
         startDate: todayStr,
         isActive: true,
-        phases: {
-          create: [
-            {
-              phaseNumber: 1,
-              title: 'RESET',
-              objective: 'Examine patterns, habits, and spiritual & mental foundation.',
-              weeks: {
-                create: [
-                  { weekNumber: 1, theme: 'Reset Your Mindset' },
-                  { weekNumber: 2, theme: 'Examine Habits & Routines' },
-                  { weekNumber: 3, theme: 'Spiritual Alignment & Reflection' },
-                  { weekNumber: 4, theme: 'Emotional & Relational Audit' },
-                ],
-              },
-            },
-            {
-              phaseNumber: 2,
-              title: 'RESTART',
-              objective: 'Rebuild healthier habits, discipline, and execution systems.',
-              weeks: {
-                create: [
-                  { weekNumber: 5, theme: 'Building Core Routines' },
-                  { weekNumber: 6, theme: 'Physical & Mental Energy' },
-                  { weekNumber: 7, theme: 'Time & Attention Management' },
-                  { weekNumber: 8, theme: 'Financial Responsibility & Stewardship' },
-                ],
-              },
-            },
-            {
-              phaseNumber: 3,
-              title: 'REFOCUS',
-              objective: 'Align long-term vision, legacy, and continuous growth.',
-              weeks: {
-                create: [
-                  { weekNumber: 9, theme: 'Vision & Long-Term Purpose' },
-                  { weekNumber: 10, theme: 'Relational & Community Stewardship' },
-                  { weekNumber: 11, theme: 'Consistency Under Pressure' },
-                  { weekNumber: 12, theme: 'Legacy & Sustained Growth' },
-                ],
-              },
-            },
-          ],
-        },
       },
     });
 
@@ -548,6 +505,154 @@ export const deleteResource = async (req: Request, res: Response) => {
     return res.json({ message: 'Resource deleted successfully' });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to delete resource' });
+  }
+};
+
+// --- PHASE, WEEK, DAY CRUD ---
+export const createOrUpdatePhase = async (req: Request, res: Response) => {
+  try {
+    const { id, programmeId, title, phaseNumber, durationDays, objective, isUnlocked } = req.body;
+    if (!title || phaseNumber === undefined) {
+      return res.status(400).json({ error: 'Phase title and phaseNumber are required' });
+    }
+
+    const prog = await getOrEnsureActiveProgramme();
+    const targetProgrammeId = programmeId || prog.id;
+
+    let phase;
+    if (id) {
+      phase = await prisma.programmePhase.update({
+        where: { id },
+        data: {
+          title,
+          phaseNumber: parseInt(phaseNumber, 10),
+          durationDays: durationDays ? parseInt(durationDays, 10) : 30,
+          objective,
+          isUnlocked: isUnlocked !== undefined ? !!isUnlocked : true,
+        },
+      });
+    } else {
+      phase = await prisma.programmePhase.create({
+        data: {
+          programmeId: targetProgrammeId,
+          title,
+          phaseNumber: parseInt(phaseNumber, 10),
+          durationDays: durationDays ? parseInt(durationDays, 10) : 30,
+          objective,
+          isUnlocked: isUnlocked !== undefined ? !!isUnlocked : true,
+        },
+      });
+    }
+
+    return res.status(201).json({ phase });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to save phase' });
+  }
+};
+
+export const deletePhase = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.programmePhase.delete({ where: { id } });
+    return res.json({ message: 'Phase deleted successfully' });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to delete phase' });
+  }
+};
+
+export const createOrUpdateWeek = async (req: Request, res: Response) => {
+  try {
+    const { id, phaseId, weekNumber, theme, objective, keyAreas, anchorResource } = req.body;
+    if (!phaseId || !theme || weekNumber === undefined) {
+      return res.status(400).json({ error: 'phaseId, theme, and weekNumber are required' });
+    }
+
+    let week;
+    if (id) {
+      week = await prisma.programmeWeek.update({
+        where: { id },
+        data: {
+          phaseId,
+          weekNumber: parseInt(weekNumber, 10),
+          theme,
+          objective,
+          keyAreas,
+          anchorResource: anchorResource || null,
+        },
+      });
+    } else {
+      week = await prisma.programmeWeek.create({
+        data: {
+          phaseId,
+          weekNumber: parseInt(weekNumber, 10),
+          theme,
+          objective,
+          keyAreas,
+          anchorResource: anchorResource || null,
+        },
+      });
+    }
+
+    return res.status(201).json({ week });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to save week' });
+  }
+};
+
+export const deleteWeek = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.programmeWeek.delete({ where: { id } });
+    return res.json({ message: 'Week deleted successfully' });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to delete week' });
+  }
+};
+
+export const createOrUpdateDay = async (req: Request, res: Response) => {
+  try {
+    const { id, weekId, dayNumber, dayOfWeek, title, focus } = req.body;
+    if (!weekId || dayNumber === undefined) {
+      return res.status(400).json({ error: 'weekId and dayNumber are required' });
+    }
+
+    let day;
+    if (id) {
+      day = await prisma.programmeDay.update({
+        where: { id },
+        data: {
+          weekId,
+          dayNumber: parseInt(dayNumber, 10),
+          dayOfWeek,
+          title: title || `Day ${dayNumber}`,
+          focus,
+        },
+      });
+    } else {
+      day = await prisma.programmeDay.create({
+        data: {
+          weekId,
+          dayNumber: parseInt(dayNumber, 10),
+          dayOfWeek,
+          title: title || `Day ${dayNumber}`,
+          focus,
+        },
+      });
+    }
+
+    return res.status(201).json({ day });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to save day' });
+  }
+};
+
+export const deleteDay = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.programmeDay.delete({ where: { id } });
+    return res.json({ message: 'Day deleted successfully' });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to delete day' });
   }
 };
 
