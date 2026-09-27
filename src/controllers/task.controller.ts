@@ -133,6 +133,7 @@ export const updateTask = async (req: AuthenticatedRequest, res: Response) => {
       description,
       pillar,
       taskType,
+      timeOfDay,
       isNonNegotiable,
       pageRange,
       timestampRange,
@@ -149,6 +150,7 @@ export const updateTask = async (req: AuthenticatedRequest, res: Response) => {
     if (description !== undefined) dataToUpdate.description = description;
     if (pillar !== undefined) dataToUpdate.pillar = pillar;
     if (taskType !== undefined) dataToUpdate.taskType = taskType;
+    if (timeOfDay !== undefined) dataToUpdate.timeOfDay = timeOfDay || 'ANYTIME';
     if (isNonNegotiable !== undefined) dataToUpdate.isNonNegotiable = !!isNonNegotiable;
     if (pageRange !== undefined) dataToUpdate.pageRange = pageRange || null;
     if (timestampRange !== undefined) dataToUpdate.timestampRange = timestampRange || null;

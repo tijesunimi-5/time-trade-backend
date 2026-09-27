@@ -93,27 +93,6 @@ export const updateUserRoles = async (req: Request, res: Response) => {
   }
 };
 
-export const updateSystemSettings = async (req: Request, res: Response) => {
-  try {
-    const { isAdminRegistrationActive } = req.body;
-
-    const settings = await prisma.systemSettings.upsert({
-      where: { id: 'global' },
-      update: {
-        isAdminRegistrationActive: typeof isAdminRegistrationActive === 'boolean' ? isAdminRegistrationActive : true,
-      },
-      create: {
-        id: 'global',
-        isAdminRegistrationActive: typeof isAdminRegistrationActive === 'boolean' ? isAdminRegistrationActive : true,
-      },
-    });
-
-    return res.json({ message: 'Settings updated successfully', settings });
-  } catch (error: any) {
-    return res.status(500).json({ error: error.message || 'Failed to update settings' });
-  }
-};
-
 export const assignFollowUpMember = async (req: Request, res: Response) => {
   try {
     const { followUpId, participantId } = req.body;
@@ -444,5 +423,75 @@ export const reorderDynamicFormFields = async (req: Request, res: Response) => {
     return res.json({ message: 'Questions reordered successfully' });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to reorder fields' });
+  }
+};
+
+export const getSystemSettings = async (req: Request, res: Response) => {
+  try {
+    let settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+    if (!settings) {
+      settings = await prisma.systemSettings.create({
+        data: {
+          id: 'global',
+          isAdminRegistrationActive: true,
+          pillars: JSON.stringify(['SPIRITUAL', 'MENTAL', 'SOCIAL', 'PHYSICAL', 'FINANCIAL', 'RELATIONSHIP']),
+        },
+      });
+    }
+
+    const pillarsList = settings.pillars
+      ? JSON.parse(settings.pillars)
+      : ['SPIRITUAL', 'MENTAL', 'SOCIAL', 'PHYSICAL', 'FINANCIAL', 'RELATIONSHIP'];
+
+    return res.json({
+      settings: {
+        ...settings,
+        pillarsList,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to fetch settings' });
+  }
+};
+
+export const updateSystemSettings = async (req: Request, res: Response) => {
+  try {
+    const { isAdminRegistrationActive, pillars } = req.body;
+
+    const dataToUpdate: any = {};
+    if (typeof isAdminRegistrationActive === 'boolean') {
+      dataToUpdate.isAdminRegistrationActive = isAdminRegistrationActive;
+    }
+    if (pillars !== undefined) {
+      dataToUpdate.pillars = typeof pillars === 'string' ? pillars : JSON.stringify(pillars);
+    }
+
+    const settings = await prisma.systemSettings.upsert({
+      where: { id: 'global' },
+      update: dataToUpdate,
+      create: {
+        id: 'global',
+        isAdminRegistrationActive: isAdminRegistrationActive ?? true,
+        pillars: pillars
+          ? typeof pillars === 'string'
+            ? pillars
+            : JSON.stringify(pillars)
+          : JSON.stringify(['SPIRITUAL', 'MENTAL', 'SOCIAL', 'PHYSICAL', 'FINANCIAL', 'RELATIONSHIP']),
+      },
+    });
+
+    const pillarsList = settings.pillars
+      ? JSON.parse(settings.pillars)
+      : ['SPIRITUAL', 'MENTAL', 'SOCIAL', 'PHYSICAL', 'FINANCIAL', 'RELATIONSHIP'];
+
+    return res.json({
+      message: 'System settings updated successfully',
+      settings: {
+        ...settings,
+        pillarsList,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to update settings' });
   }
 };

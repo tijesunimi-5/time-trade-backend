@@ -114,6 +114,7 @@ model TaskTemplate {
   description            String?  @db.Text
   taskType               String   @default("GROWTH") // NON_NEGOTIABLE, GROWTH, LEARNING, COMMUNITY, PERSONAL, EVENT
   pillar                 String   @default("SPIRITUAL") // SPIRITUAL, MENTAL, SOCIAL
+  timeOfDay              String?  @default("ANYTIME") // ANYTIME, MORNING, AFTERNOON, NIGHT
   defaultRequired        Boolean  @default(true)
   defaultDurationMinutes Int      @default(15)
   iconCategory           String?
@@ -135,6 +136,7 @@ model Task {
   description          String        @db.Text
   taskType             String        @default("GROWTH") // NON_NEGOTIABLE, GROWTH, LEARNING, COMMUNITY, PERSONAL, EVENT
   pillar               String        // SPIRITUAL, SOCIAL, MENTAL
+  timeOfDay            String?       @default("ANYTIME") // ANYTIME, MORNING, AFTERNOON, NIGHT
   category             String?
   frequencyType        String        @default("DAILY") // DAILY, WEEKLY, BIWEEKLY, MONTHLY, ONE_TIME, RECURRING
   isNonNegotiable      Boolean       @default(false)
@@ -275,6 +277,7 @@ model DynamicFormField {
 model SystemSettings {
   id                        String   @id @default("global")
   isAdminRegistrationActive Boolean  @default(true)
+  pillars                   String?  @db.Text
   updatedAt                 DateTime @updatedAt
 }
 

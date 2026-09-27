@@ -16,6 +16,7 @@ import {
   unpublishForm,
   deleteForm,
   updateSystemSettings,
+  getSystemSettings,
   updateUserRoles,
 } from '../controllers/admin.controller';
 import { authenticateJWT, requireRole } from '../middlewares/auth.middleware';
@@ -67,6 +68,7 @@ router.delete('/forms/fields/:id', requireRole(FORM_BUILDER_ROLES), deleteDynami
 router.put('/users/:id/roles', requireRole(FORM_BUILDER_ROLES), updateUserRoles);
 router.post('/assign-followup', requireRole(FORM_BUILDER_ROLES), assignFollowUpMember);
 router.put('/testimonials/:id/approve', requireRole(FORM_BUILDER_ROLES), approveTestimonial);
+router.get('/settings', getSystemSettings);
 router.put('/settings', requireRole(FORM_BUILDER_ROLES), updateSystemSettings);
 
 export default router;

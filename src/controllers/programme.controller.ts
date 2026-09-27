@@ -408,7 +408,7 @@ export const getAdminProgrammeTree = async (req: Request, res: Response) => {
 
 export const createOrUpdateTaskTemplate = async (req: Request, res: Response) => {
   try {
-    const { id, title, description, taskType, pillar, defaultRequired, defaultDurationMinutes, iconCategory } = req.body;
+    const { id, title, description, taskType, pillar, timeOfDay, defaultRequired, defaultDurationMinutes, iconCategory } = req.body;
 
     if (!title || !pillar) {
       return res.status(400).json({ error: 'Title and Pillar are required' });
@@ -418,11 +418,11 @@ export const createOrUpdateTaskTemplate = async (req: Request, res: Response) =>
     if (id) {
       template = await prisma.taskTemplate.update({
         where: { id },
-        data: { title, description, taskType, pillar, defaultRequired, defaultDurationMinutes, iconCategory },
+        data: { title, description, taskType, pillar, timeOfDay: timeOfDay || 'ANYTIME', defaultRequired, defaultDurationMinutes, iconCategory },
       });
     } else {
       template = await prisma.taskTemplate.create({
-        data: { title, description, taskType, pillar, defaultRequired, defaultDurationMinutes, iconCategory },
+        data: { title, description, taskType, pillar, timeOfDay: timeOfDay || 'ANYTIME', defaultRequired, defaultDurationMinutes, iconCategory },
       });
     }
 
@@ -468,6 +468,7 @@ export const assignTaskToDay = async (req: Request, res: Response) => {
       description,
       pillar,
       taskType,
+      timeOfDay,
       isNonNegotiable,
       pageRange,
       timestampRange,
@@ -488,6 +489,7 @@ export const assignTaskToDay = async (req: Request, res: Response) => {
         description: description || '',
         pillar,
         taskType: taskType || 'GROWTH',
+        timeOfDay: timeOfDay || 'ANYTIME',
         isNonNegotiable: isNonNegotiable || false,
         pageRange,
         timestampRange,
