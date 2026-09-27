@@ -28,6 +28,7 @@ model User {
   testimonials        Testimonial[]
   personalTasks       ParticipantPersonalTask[]
   dailyJournalNotes   DailyJournalNote[]
+  feedbacks           Feedback[]
 }
 
 model Profile {
@@ -288,4 +289,18 @@ model DailyJournalNote {
   updatedAt     DateTime @updatedAt
 
   @@unique([participantId, noteDate])
+}
+
+model Feedback {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      String   @default("GENERAL") // GENERAL, BUG_REPORT, FEATURE_REQUEST, TASK_ISSUE, APP_EXPERIENCE
+  subject       String
+  message       String   @db.Text
+  status        String   @default("PENDING") // PENDING, IN_PROGRESS, RESOLVED, DISMISSED
+  adminResponse String?  @db.Text
+  respondedBy   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

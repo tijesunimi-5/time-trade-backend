@@ -10,6 +10,7 @@ import calendarRoutes from './routes/calendar.routes';
 import programmeRoutes from './routes/programme.routes';
 import testimonialRoutes from './routes/testimonial.routes';
 import adminRoutes from './routes/admin.routes';
+import feedbackRoutes from './routes/feedback.routes';
 import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
@@ -36,6 +37,7 @@ app.use('/api/v1/calendar', calendarRoutes);
 app.use('/api/v1/programme', programmeRoutes);
 app.use('/api/v1/testimonials', testimonialRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/feedback', feedbackRoutes);
 
 // Error Middleware
 app.use(errorHandler);
