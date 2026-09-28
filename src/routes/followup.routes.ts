@@ -4,7 +4,9 @@ import { authenticateJWT, requireRole } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-router.get('/assigned', authenticateJWT, requireRole(['FOLLOW_UP', 'ADMIN']), getAssignedParticipants);
-router.post('/notes', authenticateJWT, requireRole(['FOLLOW_UP', 'ADMIN']), addFollowUpNote);
+const FOLLOW_UP_ROLES = ['FOLLOW_UP', 'ADMIN', 'LEADERSHIP', 'EXCO', 'COMMUNITY_MANAGEMENT', 'PROGRAM_PLANNING'];
+
+router.get('/assigned', authenticateJWT, requireRole(FOLLOW_UP_ROLES), getAssignedParticipants);
+router.post('/notes', authenticateJWT, requireRole(FOLLOW_UP_ROLES), addFollowUpNote);
 
 export default router;
