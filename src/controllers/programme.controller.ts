@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
+import fs from 'fs';
+import path from 'path';
 
 const prisma = new PrismaClient();
 
@@ -432,9 +434,43 @@ export const createOrUpdateTaskTemplate = async (req: Request, res: Response) =>
   }
 };
 
+export const uploadResourceFile = async (req: Request, res: Response) => {
+  try {
+    const { fileName, fileData } = req.body;
+    if (!fileData) {
+      return res.status(400).json({ error: 'No file data provided' });
+    }
+
+    const uploadsDir = path.join(__dirname, '../../uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    let base64Content = fileData;
+    if (fileData.includes(';base64,')) {
+      base64Content = fileData.split(';base64,')[1];
+    }
+
+    const cleanFileName = `${Date.now()}-${(fileName || 'file.pdf').replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const filePath = path.join(uploadsDir, cleanFileName);
+
+    const buffer = Buffer.from(base64Content, 'base64');
+    fs.writeFileSync(filePath, buffer);
+
+    const relativeUrl = `/uploads/${cleanFileName}`;
+    return res.json({
+      message: 'File uploaded successfully',
+      fileUrl: relativeUrl,
+      fileName: fileName || cleanFileName,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to upload resource file' });
+  }
+};
+
 export const createOrUpdateResource = async (req: Request, res: Response) => {
   try {
-    const { id, title, type, author, url, contentNotes } = req.body;
+    const { id, title, type, author, url, fileUrl, fileName, accessType, contentNotes } = req.body;
 
     if (!title || !type) {
       return res.status(400).json({ error: 'Title and Type are required' });
@@ -444,11 +480,29 @@ export const createOrUpdateResource = async (req: Request, res: Response) => {
     if (id) {
       resource = await prisma.resource.update({
         where: { id },
-        data: { title, type, author, url, contentNotes },
+        data: {
+          title,
+          type,
+          author: author || null,
+          url: url || null,
+          fileUrl: fileUrl || null,
+          fileName: fileName || null,
+          accessType: accessType || (fileUrl ? 'FILE' : 'LINK'),
+          contentNotes,
+        },
       });
     } else {
       resource = await prisma.resource.create({
-        data: { title, type, author, url, contentNotes },
+        data: {
+          title,
+          type,
+          author: author || null,
+          url: url || null,
+          fileUrl: fileUrl || null,
+          fileName: fileName || null,
+          accessType: accessType || (fileUrl ? 'FILE' : 'LINK'),
+          contentNotes,
+        },
       });
     }
 
@@ -474,6 +528,9 @@ export const assignTaskToDay = async (req: Request, res: Response) => {
       timestampRange,
       discussionQuestions,
       durationMinutes,
+      resourceUrl,
+      fileUrl,
+      fileName,
     } = req.body;
 
     if (!title || !pillar) {
@@ -495,6 +552,9 @@ export const assignTaskToDay = async (req: Request, res: Response) => {
         timestampRange,
         discussionQuestions,
         durationMinutes: durationMinutes ? parseInt(durationMinutes, 10) : 15,
+        resourceUrl: resourceUrl || null,
+        fileUrl: fileUrl || null,
+        fileName: fileName || null,
       },
       include: { resource: true },
     });

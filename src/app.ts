@@ -20,7 +20,17 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json());
+import path from 'path';
+import fs from 'fs';
+
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use('/uploads', express.static(uploadsDir));
 
 // Health Check
 app.get('/api/v1/health', (req, res) => {
@@ -53,6 +63,11 @@ async function autoMigrateDatabase() {
     await prisma.$executeRawUnsafe(`ALTER TABLE "Profile" ADD COLUMN IF NOT EXISTS "expectations" TEXT;`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "Profile" ADD COLUMN IF NOT EXISTS "customAnswers" TEXT;`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "User" ALTER COLUMN "passwordHash" DROP NOT NULL;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Resource" ADD COLUMN IF NOT EXISTS "fileUrl" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Resource" ADD COLUMN IF NOT EXISTS "fileName" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Resource" ADD COLUMN IF NOT EXISTS "accessType" TEXT DEFAULT 'LINK';`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "fileUrl" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "fileName" TEXT;`);
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "SystemSettings" (
           "id" TEXT NOT NULL,

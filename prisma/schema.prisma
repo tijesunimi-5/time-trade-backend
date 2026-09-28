@@ -102,6 +102,9 @@ model Resource {
   type         String   // BOOK, PODCAST, SERMON, VIDEO, ARTICLE, DOCUMENT, EXTERNAL_LINK
   author       String?
   url          String?
+  fileUrl      String?  // Softcopy upload URL or data URL
+  fileName     String?  // Original filename e.g. Mindset_Carol_Dweck.pdf
+  accessType   String?  @default("LINK") // "LINK" or "FILE"
   contentNotes String?  @db.Text
   createdAt    DateTime @default(now())
 
@@ -149,6 +152,8 @@ model Task {
   pageRange            String?       // e.g. "Chapter 2, pp. 15–30"
   timestampRange       String?       // e.g. "12:30 – 28:40"
   resourceUrl          String?
+  fileUrl              String?
+  fileName             String?
   instructions         String?       @db.Text
   discussionQuestions  String?       @db.Text
   durationMinutes      Int?          @default(15)

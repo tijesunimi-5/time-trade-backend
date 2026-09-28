@@ -139,6 +139,9 @@ export const updateTask = async (req: AuthenticatedRequest, res: Response) => {
       timestampRange,
       discussionQuestions,
       durationMinutes,
+      resourceUrl,
+      fileUrl,
+      fileName,
       isActive,
     } = req.body;
 
@@ -156,6 +159,9 @@ export const updateTask = async (req: AuthenticatedRequest, res: Response) => {
     if (timestampRange !== undefined) dataToUpdate.timestampRange = timestampRange || null;
     if (discussionQuestions !== undefined) dataToUpdate.discussionQuestions = discussionQuestions || null;
     if (durationMinutes !== undefined) dataToUpdate.durationMinutes = durationMinutes ? parseInt(durationMinutes, 10) : undefined;
+    if (resourceUrl !== undefined) dataToUpdate.resourceUrl = resourceUrl || null;
+    if (fileUrl !== undefined) dataToUpdate.fileUrl = fileUrl || null;
+    if (fileName !== undefined) dataToUpdate.fileName = fileName || null;
     if (isActive !== undefined) dataToUpdate.isActive = !!isActive;
 
     const task = await prisma.task.update({

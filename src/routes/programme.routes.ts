@@ -22,6 +22,7 @@ import {
   resetProgramme,
   saveJournalNote,
   getJournalNote,
+  uploadResourceFile,
 } from '../controllers/programme.controller';
 import { authenticateJWT, optionalJWT, requireRole } from '../middlewares/auth.middleware';
 
@@ -51,6 +52,7 @@ router.post('/admin/day', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEA
 router.delete('/admin/day/:id', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), deleteDay);
 router.post('/admin/template', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), createOrUpdateTaskTemplate);
 router.delete('/admin/template/:id', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), deleteTaskTemplate);
+router.post('/admin/upload-resource', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), uploadResourceFile);
 router.post('/admin/resource', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), createOrUpdateResource);
 router.delete('/admin/resource/:id', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), deleteResource);
 router.post('/admin/assign-task', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), assignTaskToDay);
