@@ -2,6 +2,8 @@ import { Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { updateParticipantStreak } from '../utils/streak';
+import { calculateAutoIncrementReading } from '../utils/readingPlan';
+import { getOrEnsureActiveProgramme } from './programme.controller';
 
 const prisma = new PrismaClient();
 
@@ -18,9 +20,17 @@ export const getTodayTasks = async (req: AuthenticatedRequest, res: Response) =>
     const userId = req.user?.userId;
     const dateStr = (req.query.date as string) || new Date().toISOString().split('T')[0];
 
+    const programme = await getOrEnsureActiveProgramme();
+    const [sy, sm, sd] = programme.startDate.split('-').map(Number);
+    const [ty, tm, td] = dateStr.split('-').map(Number);
+    const start = Date.UTC(sy, sm - 1, sd);
+    const target = Date.UTC(ty, tm - 1, td);
+    const dayNumber = Math.max(1, Math.floor((target - start) / (1000 * 60 * 60 * 24)) + 1);
+
     // Fetch active tasks
     const tasks = await prisma.task.findMany({
       where: { isActive: true },
+      include: { resource: true },
       orderBy: { displayOrder: 'asc' },
     });
 
@@ -37,10 +47,38 @@ export const getTodayTasks = async (req: AuthenticatedRequest, res: Response) =>
       completions = userCompletions.map((c) => c.taskId);
     }
 
-    const tasksWithCompletion = tasks.map((task) => ({
-      ...task,
-      isCompleted: completions.includes(task.id),
-    }));
+    const tasksWithCompletion = tasks.map((task) => {
+      const isAuto = task.isAutoIncrement || task.resource?.isAutoIncrement || task.resource?.type === 'BIBLE';
+      let autoIncrementInfo = null;
+      let dynamicPageRange = task.pageRange;
+      let dynamicResourceUrl = task.resourceUrl || task.resource?.url;
+
+      if (isAuto) {
+        autoIncrementInfo = calculateAutoIncrementReading({
+          dayNumber,
+          startUnit: task.startUnit ?? task.resource?.startUnit,
+          unitsPerDay: task.unitsPerDay ?? task.resource?.unitsPerDay,
+          unitType: task.unitType || task.resource?.unitType,
+          bookName: task.bookName || task.resource?.bookName || task.title,
+          bibleVersion: task.resource?.bibleVersion,
+          baseUrlOrTemplate: task.resource?.bibleUrlTemplate || task.resource?.url || task.resourceUrl,
+          resourceType: task.resource?.type,
+        });
+
+        dynamicPageRange = autoIncrementInfo.calculatedRange;
+        if (autoIncrementInfo.calculatedUrl) {
+          dynamicResourceUrl = autoIncrementInfo.calculatedUrl;
+        }
+      }
+
+      return {
+        ...task,
+        pageRange: dynamicPageRange,
+        resourceUrl: dynamicResourceUrl,
+        autoIncrementInfo,
+        isCompleted: completions.includes(task.id),
+      };
+    });
 
     // Structure tasks: Morning (1) -> Normal (2) -> Night (3)
     tasksWithCompletion.sort((a, b) => {

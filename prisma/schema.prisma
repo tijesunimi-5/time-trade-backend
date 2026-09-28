@@ -97,16 +97,23 @@ model ProgrammeDay {
 }
 
 model Resource {
-  id           String   @id @default(uuid())
-  title        String
-  type         String   // BOOK, PODCAST, SERMON, VIDEO, ARTICLE, DOCUMENT, EXTERNAL_LINK
-  author       String?
-  url          String?
-  fileUrl      String?  // Softcopy upload URL or data URL
-  fileName     String?  // Original filename e.g. Mindset_Carol_Dweck.pdf
-  accessType   String?  @default("LINK") // "LINK" or "FILE"
-  contentNotes String?  @db.Text
-  createdAt    DateTime @default(now())
+  id               String   @id @default(uuid())
+  title            String
+  type             String   // BIBLE, BOOK, PODCAST, SERMON, VIDEO, ARTICLE, DOCUMENT, EXTERNAL_LINK
+  author           String?
+  url              String?
+  fileUrl          String?  // Softcopy upload URL or data URL
+  fileName         String?  // Original filename e.g. Mindset_Carol_Dweck.pdf
+  accessType       String?  @default("LINK") // "LINK" or "FILE"
+  contentNotes     String?  @db.Text
+  isAutoIncrement  Boolean  @default(false)
+  startUnit        Int?     @default(1)
+  unitsPerDay      Int?     @default(3)
+  unitType         String?  @default("CHAPTERS") // "CHAPTERS" or "PAGES"
+  bookName         String?  // e.g. "Matthew" or "Genesis" or "Mindset"
+  bibleVersion     String?  @default("KJV")
+  bibleUrlTemplate String?  // e.g. https://bible.com/bible/1/mat.2.1.kjv
+  createdAt        DateTime @default(now())
 
   tasks Task[]
 }
@@ -157,6 +164,11 @@ model Task {
   instructions         String?       @db.Text
   discussionQuestions  String?       @db.Text
   durationMinutes      Int?          @default(15)
+  isAutoIncrement      Boolean?      @default(false)
+  startUnit            Int?
+  unitsPerDay          Int?
+  unitType             String?
+  bookName             String?
   isActive             Boolean       @default(true)
   displayOrder         Int           @default(0)
   createdAt            DateTime      @default(now())

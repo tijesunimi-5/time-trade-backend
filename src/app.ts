@@ -70,6 +70,18 @@ async function autoMigrateDatabase() {
     await prisma.$executeRawUnsafe(`ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "fileName" TEXT;`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "Streak" ADD COLUMN IF NOT EXISTS "isProtected" BOOLEAN DEFAULT false;`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "Streak" ADD COLUMN IF NOT EXISTS "bonusStreak" INTEGER DEFAULT 0;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Resource" ADD COLUMN IF NOT EXISTS "isAutoIncrement" BOOLEAN DEFAULT false;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Resource" ADD COLUMN IF NOT EXISTS "startUnit" INTEGER DEFAULT 1;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Resource" ADD COLUMN IF NOT EXISTS "unitsPerDay" INTEGER DEFAULT 3;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Resource" ADD COLUMN IF NOT EXISTS "unitType" TEXT DEFAULT 'CHAPTERS';`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Resource" ADD COLUMN IF NOT EXISTS "bookName" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Resource" ADD COLUMN IF NOT EXISTS "bibleVersion" TEXT DEFAULT 'KJV';`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Resource" ADD COLUMN IF NOT EXISTS "bibleUrlTemplate" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "isAutoIncrement" BOOLEAN DEFAULT false;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "startUnit" INTEGER;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "unitsPerDay" INTEGER;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "unitType" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "bookName" TEXT;`);
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "SystemSettings" (
           "id" TEXT NOT NULL,

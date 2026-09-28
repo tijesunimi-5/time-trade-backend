@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import fs from 'fs';
 import path from 'path';
 import { generateSmartMotivationalMessage } from './leaderboard.controller';
+import { calculateAutoIncrementReading } from '../utils/readingPlan';
 
 const prisma = new PrismaClient();
 
@@ -248,10 +249,38 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
       if (noteObj) userJournalNote = noteObj.content;
     }
 
-    const tasksWithCompletion = allTasks.map(t => ({
-      ...t,
-      isCompleted: completedTaskIds.includes(t.id),
-    }));
+    const tasksWithCompletion = allTasks.map(t => {
+      const isAuto = t.isAutoIncrement || t.resource?.isAutoIncrement || t.resource?.type === 'BIBLE';
+      let autoIncrementInfo = null;
+      let dynamicPageRange = t.pageRange;
+      let dynamicResourceUrl = t.resourceUrl || t.resource?.url;
+
+      if (isAuto) {
+        autoIncrementInfo = calculateAutoIncrementReading({
+          dayNumber: targetDayNum,
+          startUnit: t.startUnit ?? t.resource?.startUnit,
+          unitsPerDay: t.unitsPerDay ?? t.resource?.unitsPerDay,
+          unitType: t.unitType || t.resource?.unitType,
+          bookName: t.bookName || t.resource?.bookName || t.title,
+          bibleVersion: t.resource?.bibleVersion,
+          baseUrlOrTemplate: t.resource?.bibleUrlTemplate || t.resource?.url || t.resourceUrl,
+          resourceType: t.resource?.type,
+        });
+
+        dynamicPageRange = autoIncrementInfo.calculatedRange;
+        if (autoIncrementInfo.calculatedUrl) {
+          dynamicResourceUrl = autoIncrementInfo.calculatedUrl;
+        }
+      }
+
+      return {
+        ...t,
+        pageRange: dynamicPageRange,
+        resourceUrl: dynamicResourceUrl,
+        autoIncrementInfo,
+        isCompleted: completedTaskIds.includes(t.id),
+      };
+    });
 
     let smartMotivationalBanner = null;
     if (userId && programme.isLive) {
@@ -544,39 +573,56 @@ export const uploadResourceFile = async (req: Request, res: Response) => {
 
 export const createOrUpdateResource = async (req: Request, res: Response) => {
   try {
-    const { id, title, type, author, url, fileUrl, fileName, accessType, contentNotes } = req.body;
+    const {
+      id,
+      title,
+      type,
+      author,
+      url,
+      fileUrl,
+      fileName,
+      accessType,
+      contentNotes,
+      isAutoIncrement,
+      startUnit,
+      unitsPerDay,
+      unitType,
+      bookName,
+      bibleVersion,
+      bibleUrlTemplate,
+    } = req.body;
 
     if (!title || !type) {
       return res.status(400).json({ error: 'Title and Type are required' });
     }
 
+    const payloadData = {
+      title,
+      type: (type || 'BOOK').toUpperCase(),
+      author: author || null,
+      url: url || null,
+      fileUrl: fileUrl || null,
+      fileName: fileName || null,
+      accessType: accessType || (fileUrl ? 'FILE' : 'LINK'),
+      contentNotes: contentNotes || null,
+      isAutoIncrement: !!isAutoIncrement,
+      startUnit: startUnit ? parseInt(startUnit, 10) : 1,
+      unitsPerDay: unitsPerDay ? parseInt(unitsPerDay, 10) : 3,
+      unitType: unitType || (type === 'BIBLE' ? 'CHAPTERS' : 'PAGES'),
+      bookName: bookName || title || null,
+      bibleVersion: bibleVersion || 'KJV',
+      bibleUrlTemplate: bibleUrlTemplate || url || null,
+    };
+
     let resource;
     if (id) {
       resource = await prisma.resource.update({
         where: { id },
-        data: {
-          title,
-          type,
-          author: author || null,
-          url: url || null,
-          fileUrl: fileUrl || null,
-          fileName: fileName || null,
-          accessType: accessType || (fileUrl ? 'FILE' : 'LINK'),
-          contentNotes,
-        },
+        data: payloadData,
       });
     } else {
       resource = await prisma.resource.create({
-        data: {
-          title,
-          type,
-          author: author || null,
-          url: url || null,
-          fileUrl: fileUrl || null,
-          fileName: fileName || null,
-          accessType: accessType || (fileUrl ? 'FILE' : 'LINK'),
-          contentNotes,
-        },
+        data: payloadData,
       });
     }
 
