@@ -3,6 +3,14 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export const updateParticipantStreak = async (participantId: string) => {
+  // Fetch existing streak record for protection flags
+  const streakRecord = await prisma.streak.findUnique({
+    where: { participantId },
+  });
+
+  const isProtected = streakRecord?.isProtected || false;
+  const bonusStreak = streakRecord?.bonusStreak || 0;
+
   // Get all completions for participant
   const completions = await prisma.taskCompletion.findMany({
     where: { participantId },
@@ -10,40 +18,57 @@ export const updateParticipantStreak = async (participantId: string) => {
     orderBy: { completionDate: 'desc' },
   });
 
-  const totalCompleted = await prisma.taskCompletion.count({
-    where: { participantId },
-  });
-
+  const totalCompleted = completions.length;
   const totalAssignedTasks = await prisma.task.count({
     where: { isActive: true },
   });
 
-  // Unique dates of completions
+  // Unique dates of completions (sorted descending e.g. ['2026-09-28', '2026-09-26'])
   const uniqueDates = Array.from(new Set(completions.map((c) => c.completionDate))).sort().reverse();
+
+  const todayStr = new Date().toISOString().split('T')[0];
 
   let currentStreak = 0;
   let longestStreak = 0;
-  let tempStreak = 0;
 
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  if (uniqueDates.length === 0) {
+    currentStreak = bonusStreak;
+  } else {
+    const lastActivityDateStr = uniqueDates[0];
+    const [ty, tm, td] = todayStr.split('-').map(Number);
+    const [ly, lm, ld] = lastActivityDateStr.split('-').map(Number);
 
-  // Calculate current streak
-  let checkDate = new Date();
-  let hasActivityTodayOrYesterday = false;
+    const todayDate = Date.UTC(ty, tm - 1, td);
+    const lastDate = Date.UTC(ly, lm - 1, ld);
+    const daysSinceLastActivity = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
 
-  if (uniqueDates.includes(today) || uniqueDates.includes(yesterday)) {
-    hasActivityTodayOrYesterday = true;
-    let d = uniqueDates.includes(today) ? new Date() : new Date(Date.now() - 86400000);
+    // Rule: Missing 2 or more consecutive days up to today resets current streak to 0 (unless admin protected)
+    if (daysSinceLastActivity >= 3 && !isProtected) {
+      currentStreak = 0 + bonusStreak;
+    } else {
+      let activeDaysCount = 1;
 
-    while (true) {
-      const dateStr = d.toISOString().split('T')[0];
-      if (uniqueDates.includes(dateStr)) {
-        currentStreak++;
-        d.setDate(d.getDate() - 1);
-      } else {
-        break;
+      for (let i = 0; i < uniqueDates.length - 1; i++) {
+        const [y1, m1, d1] = uniqueDates[i].split('-').map(Number);
+        const [y2, m2, d2] = uniqueDates[i + 1].split('-').map(Number);
+
+        const date1 = Date.UTC(y1, m1 - 1, d1);
+        const date2 = Date.UTC(y2, m2 - 1, d2);
+        const diff = Math.floor((date1 - date2) / (1000 * 60 * 60 * 24));
+
+        // diff <= 2 means 0 or 1 missed day (1-day grace gap allowed!)
+        if (diff <= 2) {
+          activeDaysCount++;
+        } else {
+          if (!isProtected) {
+            break;
+          } else {
+            activeDaysCount++;
+          }
+        }
       }
+
+      currentStreak = activeDaysCount + bonusStreak;
     }
   }
 
@@ -53,11 +78,13 @@ export const updateParticipantStreak = async (participantId: string) => {
     longestStreak = 1;
 
     for (let i = 0; i < uniqueDates.length - 1; i++) {
-      const curr = new Date(uniqueDates[i]);
-      const prev = new Date(uniqueDates[i + 1]);
-      const diffDays = Math.round((curr.getTime() - prev.getTime()) / (1000 * 3600 * 24));
+      const [y1, m1, d1] = uniqueDates[i].split('-').map(Number);
+      const [y2, m2, d2] = uniqueDates[i + 1].split('-').map(Number);
+      const date1 = Date.UTC(y1, m1 - 1, d1);
+      const date2 = Date.UTC(y2, m2 - 1, d2);
+      const diff = Math.floor((date1 - date2) / (1000 * 60 * 60 * 24));
 
-      if (diffDays === 1) {
+      if (diff <= 2) {
         streakCount++;
         if (streakCount > longestStreak) {
           longestStreak = streakCount;
@@ -68,16 +95,16 @@ export const updateParticipantStreak = async (participantId: string) => {
     }
   }
 
-  const totalAssigned = totalAssignedTasks * 90; // estimated maximum potential tasks across 90 days
-  const overallPercentage = Math.min(100, Math.round((totalCompleted / Math.max(1, totalAssignedTasks * 17)) * 100)); // normalized up to current day 17
-
+  longestStreak = Math.max(currentStreak, longestStreak);
+  const totalAssigned = totalAssignedTasks * 90;
+  const overallPercentage = Math.min(100, Math.round((totalCompleted / Math.max(1, totalAssignedTasks * 17)) * 100));
   const lastCompletedDate = uniqueDates[0] || null;
 
   await prisma.streak.upsert({
     where: { participantId },
     update: {
       currentStreak,
-      longestStreak: Math.max(currentStreak, longestStreak),
+      longestStreak,
       totalCompleted,
       totalAssigned,
       overallPercentage,
@@ -86,19 +113,23 @@ export const updateParticipantStreak = async (participantId: string) => {
     create: {
       participantId,
       currentStreak,
-      longestStreak: Math.max(currentStreak, longestStreak),
+      longestStreak,
       totalCompleted,
       totalAssigned,
       overallPercentage,
       lastCompletedDate,
+      isProtected,
+      bonusStreak,
     },
   });
 
   return {
     currentStreak,
-    longestStreak: Math.max(currentStreak, longestStreak),
+    longestStreak,
     totalCompleted,
     overallPercentage,
     lastCompletedDate,
+    isProtected,
+    bonusStreak,
   };
 };

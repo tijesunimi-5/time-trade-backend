@@ -18,6 +18,7 @@ import {
   updateSystemSettings,
   getSystemSettings,
   updateUserRoles,
+  repairParticipantStreak,
 } from '../controllers/admin.controller';
 import { authenticateJWT, requireRole } from '../middlewares/auth.middleware';
 
@@ -66,6 +67,7 @@ router.delete('/forms/fields/:id', requireRole(FORM_BUILDER_ROLES), deleteDynami
 
 // Operational Admin Mutations
 router.put('/users/:id/roles', requireRole(FORM_BUILDER_ROLES), updateUserRoles);
+router.post('/streak/repair', requireRole(FORM_BUILDER_ROLES), repairParticipantStreak);
 router.post('/assign-followup', requireRole(FORM_BUILDER_ROLES), assignFollowUpMember);
 router.put('/testimonials/:id/approve', requireRole(FORM_BUILDER_ROLES), approveTestimonial);
 router.get('/settings', getSystemSettings);

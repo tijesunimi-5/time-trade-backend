@@ -200,6 +200,8 @@ model Streak {
   totalAssigned     Int      @default(0)
   overallPercentage Float    @default(0.0)
   lastCompletedDate String?
+  isProtected       Boolean  @default(false)
+  bonusStreak       Int      @default(0)
   updatedAt         DateTime @updatedAt
 }
 

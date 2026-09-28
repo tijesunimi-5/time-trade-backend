@@ -68,6 +68,8 @@ async function autoMigrateDatabase() {
     await prisma.$executeRawUnsafe(`ALTER TABLE "Resource" ADD COLUMN IF NOT EXISTS "accessType" TEXT DEFAULT 'LINK';`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "fileUrl" TEXT;`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "fileName" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Streak" ADD COLUMN IF NOT EXISTS "isProtected" BOOLEAN DEFAULT false;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Streak" ADD COLUMN IF NOT EXISTS "bonusStreak" INTEGER DEFAULT 0;`);
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "SystemSettings" (
           "id" TEXT NOT NULL,

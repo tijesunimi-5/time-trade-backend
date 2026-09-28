@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { updateParticipantStreak } from '../utils/streak';
 
 const prisma = new PrismaClient();
 
@@ -493,5 +494,39 @@ export const updateSystemSettings = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to update settings' });
+  }
+};
+
+export const repairParticipantStreak = async (req: Request, res: Response) => {
+  try {
+    const { participantId, isProtected, bonusStreak } = req.body;
+
+    if (!participantId) {
+      return res.status(400).json({ error: 'participantId is required' });
+    }
+
+    // Upsert protection flags in Streak model
+    await prisma.streak.upsert({
+      where: { participantId },
+      update: {
+        isProtected: typeof isProtected === 'boolean' ? isProtected : undefined,
+        bonusStreak: typeof bonusStreak === 'number' ? bonusStreak : undefined,
+      },
+      create: {
+        participantId,
+        isProtected: isProtected ?? false,
+        bonusStreak: bonusStreak ?? 0,
+      },
+    });
+
+    // Recalculate streak logic
+    const updatedStreak = await updateParticipantStreak(participantId);
+
+    return res.json({
+      message: 'Participant streak repaired and updated successfully',
+      streak: updatedStreak,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to repair participant streak' });
   }
 };
