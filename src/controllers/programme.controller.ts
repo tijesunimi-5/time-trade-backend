@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import fs from 'fs';
 import path from 'path';
+import { generateSmartMotivationalMessage } from './leaderboard.controller';
 
 const prisma = new PrismaClient();
 
@@ -239,6 +240,65 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
       isCompleted: completedTaskIds.includes(t.id),
     }));
 
+    let smartMotivationalBanner = null;
+    if (userId && programme.isLive) {
+      try {
+        const allUsers = await prisma.user.findMany({ select: { id: true, fullName: true, role: true, streak: true } });
+        const EXCO_ROLES = ['ADMIN', 'LEADERSHIP', 'FOLLOW_UP', 'PROGRAM_PLANNING', 'MEDIA', 'CONTENT', 'COMMUNITY_MANAGEMENT'];
+        const participants = allUsers.filter(u => !u.role?.split(',').some(r => EXCO_ROLES.includes(r.trim().toUpperCase())));
+
+        const completions = await prisma.taskCompletion.findMany({
+          where: { completionDate: targetDateStr },
+          select: { participantId: true, completedAt: true },
+        });
+
+        const userCompMap: Record<string, { count: number; latestTime: number }> = {};
+        completions.forEach(c => {
+          const time = new Date(c.completedAt).getTime();
+          if (!userCompMap[c.participantId]) {
+            userCompMap[c.participantId] = { count: 1, latestTime: time };
+          } else {
+            userCompMap[c.participantId].count += 1;
+            if (time > userCompMap[c.participantId].latestTime) {
+              userCompMap[c.participantId].latestTime = time;
+            }
+          }
+        });
+
+        const candidateList = participants.map(u => {
+          const comp = userCompMap[u.id] || { count: 0, latestTime: Infinity };
+          return { user: u, credits: comp.count * 5, completedTasks: comp.count, latestTime: comp.latestTime };
+        }).sort((a, b) => {
+          if (b.credits !== a.credits) return b.credits - a.credits;
+          if (a.latestTime !== b.latestTime) return a.latestTime - b.latestTime;
+          return a.user.fullName.localeCompare(b.user.fullName);
+        });
+
+        const userRankIndex = candidateList.findIndex(c => c.user.id === userId);
+        const userObj = allUsers.find(u => u.id === userId);
+        const userCompCount = completedTaskIds.length;
+
+        if (userRankIndex !== -1) {
+          const userItem = candidateList[userRankIndex];
+          const rank1Item = candidateList[0];
+
+          smartMotivationalBanner = generateSmartMotivationalMessage({
+            userRank: userRankIndex + 1,
+            totalParticipants: candidateList.length,
+            userCredits: userCompCount * 5,
+            completedTasks: userCompCount,
+            totalTasks: tasksWithCompletion.length || 5,
+            leaderName: rank1Item ? rank1Item.user.fullName : 'Competitor',
+            leaderCredits: rank1Item ? rank1Item.credits : 0,
+            userStreak: userObj?.streak?.currentStreak || 0,
+            userName: userObj?.fullName || 'Participant',
+          });
+        }
+      } catch (e) {
+        console.error('Failed to generate smart banner:', e);
+      }
+    }
+
     return res.json({
       dayNumber: targetDayNum,
       targetDate: targetDateStr,
@@ -257,6 +317,7 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
       tasks: tasksWithCompletion,
       personalTasks,
       journalNote: userJournalNote,
+      smartMotivationalBanner,
     });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to fetch day details' });
