@@ -19,6 +19,7 @@ import {
   deleteDay,
   getPublicResources,
   commenceProgramme,
+  resetProgramme,
   saveJournalNote,
   getJournalNote,
 } from '../controllers/programme.controller';
@@ -41,6 +42,7 @@ router.delete('/personal-task/:id', authenticateJWT, deletePersonalTask);
 // Admin CMS Routes (Curators: PROGRAM_PLANNING, LEADERSHIP, ADMIN)
 router.get('/admin/tree', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), getAdminProgrammeTree);
 router.post('/admin/commence', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), commenceProgramme);
+router.post('/admin/reset', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), resetProgramme);
 router.post('/admin/phase', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), createOrUpdatePhase);
 router.delete('/admin/phase/:id', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), deletePhase);
 router.post('/admin/week', authenticateJWT, requireRole(['PROGRAM_PLANNING', 'LEADERSHIP', 'ADMIN']), createOrUpdateWeek);

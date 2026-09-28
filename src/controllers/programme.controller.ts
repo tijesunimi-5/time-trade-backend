@@ -686,11 +686,18 @@ export const getPublicResources = async (req: Request, res: Response) => {
 
 export const commenceProgramme = async (req: Request, res: Response) => {
   try {
-    const { isLive, startDate } = req.body;
+    const { isLive, startDate, clientDate, targetDayNumber } = req.body;
     const programme = await getOrEnsureActiveProgramme();
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const newStartDate = startDate || todayStr;
+    let newStartDate = startDate;
+    if (!newStartDate) {
+      const baseDateStr = clientDate || new Date().toISOString().split('T')[0];
+      const targetDay = targetDayNumber ? parseInt(targetDayNumber, 10) : 1;
+      const [y, m, d] = baseDateStr.split('-').map(Number);
+      const baseDate = new Date(Date.UTC(y, m - 1, d));
+      baseDate.setUTCDate(baseDate.getUTCDate() - (targetDay - 1));
+      newStartDate = baseDate.toISOString().split('T')[0];
+    }
 
     const updatedProgramme = await prisma.programme.update({
       where: { id: programme.id },
@@ -702,12 +709,46 @@ export const commenceProgramme = async (req: Request, res: Response) => {
 
     return res.json({
       message: updatedProgramme.isLive
-        ? '90-Day Challenge officially COMMENCED & LIVE for participants!'
+        ? `90-Day Challenge officially COMMENCED & LIVE! Active Day: ${targetDayNumber || 1}`
         : '90-Day Challenge status updated to DRAFT.',
       programme: updatedProgramme,
     });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to update challenge status' });
+  }
+};
+
+export const resetProgramme = async (req: Request, res: Response) => {
+  try {
+    const { targetDayNumber, clientDate, startDate } = req.body;
+    const programme = await getOrEnsureActiveProgramme();
+
+    let newStartDate = startDate;
+    const targetDay = targetDayNumber ? parseInt(targetDayNumber, 10) : 1;
+
+    if (!newStartDate) {
+      const baseDateStr = clientDate || new Date().toISOString().split('T')[0];
+      const [y, m, d] = baseDateStr.split('-').map(Number);
+      const baseDate = new Date(Date.UTC(y, m - 1, d));
+      baseDate.setUTCDate(baseDate.getUTCDate() - (targetDay - 1));
+      newStartDate = baseDate.toISOString().split('T')[0];
+    }
+
+    const updatedProgramme = await prisma.programme.update({
+      where: { id: programme.id },
+      data: {
+        isLive: true,
+        startDate: newStartDate,
+      },
+    });
+
+    return res.json({
+      message: `Challenge calendar successfully calibrated! Today is now Day ${targetDay}.`,
+      programme: updatedProgramme,
+      currentDayNumber: targetDay,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to reset challenge calendar' });
   }
 };
 
