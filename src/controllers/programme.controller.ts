@@ -25,6 +25,14 @@ function getDayNumberFromDate(startDateStr: string, targetDateStr: string): numb
   return diffDays + 1;
 }
 
+export function getTimeOfDayPriority(timeOfDay?: string | null): number {
+  if (!timeOfDay) return 2; // Normal
+  const upper = timeOfDay.trim().toUpperCase();
+  if (upper === 'MORNING') return 1;
+  if (upper === 'NIGHT' || upper === 'EVENING') return 3;
+  return 2; // Normal (ANYTIME, AFTERNOON, etc.)
+}
+
 // Helper: Ensure an active programme exists in database, or create default 90-day architecture
 export async function getOrEnsureActiveProgramme() {
   let programme = await prisma.programme.findFirst({
@@ -174,10 +182,7 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
           include: {
             resource: true,
           },
-          orderBy: [
-            { isNonNegotiable: 'desc' },
-            { displayOrder: 'asc' },
-          ],
+          orderBy: { displayOrder: 'asc' },
         },
       },
     });
@@ -203,6 +208,14 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
       if (seenIds.has(t.id)) return false;
       seenIds.add(t.id);
       return true;
+    });
+
+    // Structure tasks: Morning (1) -> Normal (2) -> Night (3)
+    allTasks.sort((a, b) => {
+      const pA = getTimeOfDayPriority(a.timeOfDay);
+      const pB = getTimeOfDayPriority(b.timeOfDay);
+      if (pA !== pB) return pA - pB;
+      return (a.displayOrder || 0) - (b.displayOrder || 0);
     });
 
     // User completion, personal tasks & daily journal note

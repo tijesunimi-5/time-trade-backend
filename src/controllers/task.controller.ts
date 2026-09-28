@@ -5,6 +5,14 @@ import { updateParticipantStreak } from '../utils/streak';
 
 const prisma = new PrismaClient();
 
+function getTimeOfDayPriority(timeOfDay?: string | null): number {
+  if (!timeOfDay) return 2;
+  const upper = timeOfDay.trim().toUpperCase();
+  if (upper === 'MORNING') return 1;
+  if (upper === 'NIGHT' || upper === 'EVENING') return 3;
+  return 2; // Normal (ANYTIME, AFTERNOON, etc.)
+}
+
 export const getTodayTasks = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
@@ -13,10 +21,7 @@ export const getTodayTasks = async (req: AuthenticatedRequest, res: Response) =>
     // Fetch active tasks
     const tasks = await prisma.task.findMany({
       where: { isActive: true },
-      orderBy: [
-        { isNonNegotiable: 'desc' },
-        { displayOrder: 'asc' },
-      ],
+      orderBy: { displayOrder: 'asc' },
     });
 
     // Fetch user completions for this date
@@ -36,6 +41,14 @@ export const getTodayTasks = async (req: AuthenticatedRequest, res: Response) =>
       ...task,
       isCompleted: completions.includes(task.id),
     }));
+
+    // Structure tasks: Morning (1) -> Normal (2) -> Night (3)
+    tasksWithCompletion.sort((a, b) => {
+      const pA = getTimeOfDayPriority(a.timeOfDay);
+      const pB = getTimeOfDayPriority(b.timeOfDay);
+      if (pA !== pB) return pA - pB;
+      return (a.displayOrder || 0) - (b.displayOrder || 0);
+    });
 
     return res.json({
       date: dateStr,
