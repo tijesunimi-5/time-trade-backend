@@ -99,6 +99,101 @@ export const createPoll = async (req: Request, res: Response) => {
   }
 };
 
+// UPDATE POLL DETAILS & REORDER OPTIONS (Admin / EXCO)
+export const updatePoll = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { question, description, allowMultiple, isStandalone, showAsPopup, taskId, status, options } = req.body;
+
+    if (!question || !question.trim()) {
+      return res.status(400).json({ error: 'Poll question is required' });
+    }
+
+    if (!Array.isArray(options) || options.filter((o: any) => (typeof o === 'string' ? o.trim() : o?.text?.trim())).length < 2) {
+      return res.status(400).json({ error: 'At least 2 non-empty options are required' });
+    }
+
+    const existingPoll = await prisma.poll.findUnique({
+      where: { id },
+      include: { options: true },
+    });
+
+    if (!existingPoll) {
+      return res.status(404).json({ error: 'Poll not found' });
+    }
+
+    const normalizedOptions = options.map((opt: any, index: number) => {
+      if (typeof opt === 'string') {
+        return { text: opt.trim(), displayOrder: index + 1 };
+      }
+      return {
+        id: opt.id || undefined,
+        text: opt.text?.trim() || '',
+        displayOrder: typeof opt.displayOrder === 'number' ? opt.displayOrder : index + 1,
+      };
+    }).filter((opt) => opt.text.length > 0);
+
+    await prisma.poll.update({
+      where: { id },
+      data: {
+        question: question.trim(),
+        description: description?.trim() || null,
+        allowMultiple: Boolean(allowMultiple),
+        isStandalone: taskId ? false : Boolean(isStandalone ?? true),
+        showAsPopup: Boolean(showAsPopup),
+        taskId: taskId || null,
+        status: status || existingPoll.status,
+      },
+    });
+
+    const keepOptionIds = normalizedOptions.filter((o) => o.id).map((o) => o.id as string);
+
+    await prisma.pollOption.deleteMany({
+      where: {
+        pollId: id,
+        id: { notIn: keepOptionIds },
+      },
+    });
+
+    for (const opt of normalizedOptions) {
+      if (opt.id) {
+        await prisma.pollOption.update({
+          where: { id: opt.id },
+          data: {
+            text: opt.text,
+            displayOrder: opt.displayOrder,
+          },
+        });
+      } else {
+        await prisma.pollOption.create({
+          data: {
+            pollId: id,
+            text: opt.text,
+            displayOrder: opt.displayOrder,
+          },
+        });
+      }
+    }
+
+    const updatedPoll = await prisma.poll.findUnique({
+      where: { id },
+      include: {
+        options: { orderBy: { displayOrder: 'asc' } },
+        votes: true,
+        task: true,
+      },
+    });
+
+    return res.json({
+      message: 'Poll updated successfully',
+      poll: formatPollForUser(updatedPoll, (req as any).user?.id),
+    });
+  } catch (error: any) {
+    console.error('Error updating poll:', error);
+    return res.status(500).json({ error: 'Failed to update poll' });
+  }
+};
+
 // 2. GET ALL POLLS (Admin / EXCO)
 export const getAdminPolls = async (req: Request, res: Response) => {
   try {

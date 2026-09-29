@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   createPoll,
+  updatePoll,
   getAdminPolls,
   updatePollStatus,
   deletePoll,
@@ -20,6 +21,7 @@ router.post('/:id/vote', authenticateJWT, votePoll);
 // EXCO & Admin endpoints
 router.get('/admin', authenticateJWT, requireRole(['LEADERSHIP', 'ADMIN', 'PROGRAM_PLANNING', 'COMMUNITY_MANAGEMENT', 'MEDIA', 'CONTENT']), getAdminPolls);
 router.post('/', authenticateJWT, requireRole(['LEADERSHIP', 'ADMIN', 'PROGRAM_PLANNING', 'COMMUNITY_MANAGEMENT', 'MEDIA', 'CONTENT']), createPoll);
+router.put('/:id', authenticateJWT, requireRole(['LEADERSHIP', 'ADMIN', 'PROGRAM_PLANNING', 'COMMUNITY_MANAGEMENT', 'MEDIA', 'CONTENT']), updatePoll);
 router.patch('/:id/status', authenticateJWT, requireRole(['LEADERSHIP', 'ADMIN', 'PROGRAM_PLANNING', 'COMMUNITY_MANAGEMENT', 'MEDIA', 'CONTENT']), updatePollStatus);
 router.delete('/:id', authenticateJWT, requireRole(['LEADERSHIP', 'ADMIN', 'PROGRAM_PLANNING', 'COMMUNITY_MANAGEMENT', 'MEDIA', 'CONTENT']), deletePoll);
 
