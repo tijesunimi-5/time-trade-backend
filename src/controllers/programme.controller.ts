@@ -182,6 +182,13 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
           where: { isActive: true },
           include: {
             resource: true,
+            polls: {
+              where: { status: 'ACTIVE' },
+              include: {
+                options: { orderBy: { displayOrder: 'asc' } },
+                votes: true,
+              },
+            },
           },
           orderBy: { displayOrder: 'asc' },
         },
@@ -197,6 +204,13 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
       },
       include: {
         resource: true,
+        polls: {
+          where: { status: 'ACTIVE' },
+          include: {
+            options: { orderBy: { displayOrder: 'asc' } },
+            votes: true,
+          },
+        },
       },
       orderBy: { displayOrder: 'asc' },
     });
@@ -273,11 +287,45 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
         }
       }
 
+      let formattedPoll = null;
+      if (t.polls && t.polls.length > 0) {
+        const p = t.polls[0];
+        const distinctVoters = new Set(p.votes.map((v: any) => v.userId)).size;
+        const userVotedOptionIds = userId
+          ? p.votes.filter((v: any) => v.userId === userId).map((v: any) => v.optionId)
+          : [];
+
+        formattedPoll = {
+          id: p.id,
+          question: p.question,
+          description: p.description,
+          allowMultiple: p.allowMultiple,
+          status: p.status,
+          totalVotes: distinctVoters,
+          hasVoted: userVotedOptionIds.length > 0,
+          userVotedOptionIds,
+          options: p.options.map((opt: any) => {
+            const optionVotes = p.votes.filter((v: any) => v.optionId === opt.id);
+            const voteCount = optionVotes.length;
+            const percentage = distinctVoters > 0 ? Math.round((voteCount / distinctVoters) * 100) : 0;
+            return {
+              id: opt.id,
+              text: opt.text,
+              displayOrder: opt.displayOrder,
+              voteCount,
+              percentage,
+              hasVoted: userVotedOptionIds.includes(opt.id),
+            };
+          }),
+        };
+      }
+
       return {
         ...t,
         pageRange: dynamicPageRange,
         resourceUrl: dynamicResourceUrl,
         autoIncrementInfo,
+        poll: formattedPoll,
         isCompleted: completedTaskIds.includes(t.id),
       };
     });

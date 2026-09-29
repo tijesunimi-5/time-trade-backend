@@ -11,6 +11,7 @@ import programmeRoutes from './routes/programme.routes';
 import testimonialRoutes from './routes/testimonial.routes';
 import adminRoutes from './routes/admin.routes';
 import feedbackRoutes from './routes/feedback.routes';
+import pollRoutes from './routes/poll.routes';
 import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
@@ -48,6 +49,7 @@ app.use('/api/v1/programme', programmeRoutes);
 app.use('/api/v1/testimonials', testimonialRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/feedback', feedbackRoutes);
+app.use('/api/v1/polls', pollRoutes);
 
 // Error Middleware
 app.use(errorHandler);
@@ -95,6 +97,51 @@ async function autoMigrateDatabase() {
       VALUES ('global', true, CURRENT_TIMESTAMP)
       ON CONFLICT ("id") DO NOTHING;
     `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Poll" (
+          "id" TEXT NOT NULL,
+          "question" TEXT NOT NULL,
+          "description" TEXT,
+          "allowMultiple" BOOLEAN NOT NULL DEFAULT false,
+          "isStandalone" BOOLEAN NOT NULL DEFAULT true,
+          "showAsPopup" BOOLEAN NOT NULL DEFAULT false,
+          "taskId" TEXT,
+          "programmeId" TEXT,
+          "status" TEXT NOT NULL DEFAULT 'ACTIVE',
+          "createdById" TEXT,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "Poll_pkey" PRIMARY KEY ("id")
+      );
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "PollOption" (
+          "id" TEXT NOT NULL,
+          "pollId" TEXT NOT NULL,
+          "text" TEXT NOT NULL,
+          "displayOrder" INTEGER NOT NULL DEFAULT 0,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "PollOption_pkey" PRIMARY KEY ("id")
+      );
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "PollVote" (
+          "id" TEXT NOT NULL,
+          "pollId" TEXT NOT NULL,
+          "optionId" TEXT NOT NULL,
+          "userId" TEXT NOT NULL,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "PollVote_pkey" PRIMARY KEY ("id")
+      );
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "PollVote_pollId_userId_optionId_key" ON "PollVote"("pollId", "userId", "optionId");
+    `);
+
     console.log('✅ Database schema auto-synchronized with Neon PostgreSQL.');
   } catch (err: any) {
     console.warn('Auto-migration non-fatal note:', err.message);
