@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { getOrEnsureActiveProgramme } from './programme.controller';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
+import { getTodayDateString } from '../utils/date';
 
 const prisma = new PrismaClient();
 
@@ -21,26 +22,27 @@ function isExcoMember(roleStr?: string | null): boolean {
   return roles.some((r) => EXCO_ROLES.includes(r));
 }
 
-function getDateRangeForPeriod(period: string) {
-  const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
+function getDateRangeForPeriod(period: string, req?: Request) {
+  const todayStr = getTodayDateString(req);
+  const [y, m, d] = todayStr.split('-').map(Number);
+  const baseDate = new Date(Date.UTC(y, m - 1, d));
 
   if (period === 'TODAY') {
     return { startDate: todayStr, endDate: todayStr };
   }
 
   if (period === 'YESTERDAY') {
-    const yesterday = new Date(now);
-    yesterday.setUTCDate(now.getUTCDate() - 1);
+    const yesterday = new Date(baseDate);
+    yesterday.setUTCDate(baseDate.getUTCDate() - 1);
     const yestStr = yesterday.toISOString().split('T')[0];
     return { startDate: yestStr, endDate: yestStr };
   }
 
   if (period === 'THIS_WEEK') {
-    const dayOfWeek = now.getUTCDay();
+    const dayOfWeek = baseDate.getUTCDay();
     const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const monday = new Date(now);
-    monday.setUTCDate(now.getUTCDate() + diffToMon);
+    const monday = new Date(baseDate);
+    monday.setUTCDate(baseDate.getUTCDate() + diffToMon);
     const sunday = new Date(monday);
     sunday.setUTCDate(monday.getUTCDate() + 6);
     return {
@@ -50,10 +52,10 @@ function getDateRangeForPeriod(period: string) {
   }
 
   if (period === 'LAST_WEEK') {
-    const dayOfWeek = now.getUTCDay();
+    const dayOfWeek = baseDate.getUTCDay();
     const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const lastMon = new Date(now);
-    lastMon.setUTCDate(now.getUTCDate() + diffToMon - 7);
+    const lastMon = new Date(baseDate);
+    lastMon.setUTCDate(baseDate.getUTCDate() + diffToMon - 7);
     const lastSun = new Date(lastMon);
     lastSun.setUTCDate(lastMon.getUTCDate() + 6);
     return {
@@ -63,10 +65,8 @@ function getDateRangeForPeriod(period: string) {
   }
 
   if (period === 'THIS_MONTH') {
-    const year = now.getUTCFullYear();
-    const month = now.getUTCMonth();
-    const firstDay = new Date(Date.UTC(year, month, 1)).toISOString().split('T')[0];
-    const lastDay = new Date(Date.UTC(year, month + 1, 0)).toISOString().split('T')[0];
+    const firstDay = new Date(Date.UTC(y, m - 1, 1)).toISOString().split('T')[0];
+    const lastDay = new Date(Date.UTC(y, m, 0)).toISOString().split('T')[0];
     return { startDate: firstDay, endDate: lastDay };
   }
 
@@ -257,7 +257,7 @@ export const getLeaderboard = async (req: AuthenticatedRequest, res: Response) =
 
     const participants = allUsers;
 
-    const { startDate, endDate } = getDateRangeForPeriod(period);
+    const { startDate, endDate } = getDateRangeForPeriod(period, req);
 
     // Fetch completions within period for all participants
     const completions = await prisma.taskCompletion.findMany({

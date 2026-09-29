@@ -5,26 +5,9 @@ import fs from 'fs';
 import path from 'path';
 import { generateSmartMotivationalMessage } from './leaderboard.controller';
 import { calculateAutoIncrementReading } from '../utils/readingPlan';
+import { getTodayDateString, getDateForDayNumber, getDayNumberFromDate } from '../utils/date';
 
 const prisma = new PrismaClient();
-
-// Helper: Calculate date string for Day X given startDate (YYYY-MM-DD)
-function getDateForDayNumber(startDateStr: string, dayNumber: number): string {
-  const [year, month, day] = startDateStr.split('-').map(Number);
-  const d = new Date(Date.UTC(year, month - 1, day));
-  d.setUTCDate(d.getUTCDate() + (dayNumber - 1));
-  return d.toISOString().split('T')[0];
-}
-
-// Helper: Calculate Day Number given startDate (YYYY-MM-DD) and target date (YYYY-MM-DD)
-function getDayNumberFromDate(startDateStr: string, targetDateStr: string): number {
-  const [sy, sm, sd] = startDateStr.split('-').map(Number);
-  const [ty, tm, td] = targetDateStr.split('-').map(Number);
-  const start = Date.UTC(sy, sm - 1, sd);
-  const target = Date.UTC(ty, tm - 1, td);
-  const diffDays = Math.floor((target - start) / (1000 * 60 * 60 * 24));
-  return diffDays + 1;
-}
 
 export function getTimeOfDayPriority(timeOfDay?: string | null): number {
   if (!timeOfDay) return 2; // Normal
@@ -62,7 +45,7 @@ export async function getOrEnsureActiveProgramme() {
   });
 
   if (!programme) {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getTodayDateString();
     await prisma.programme.create({
       data: {
         title: 'TIME TRADE 90-Day Personal Growth Challenge',
@@ -120,7 +103,7 @@ export const getCurrentProgramme = async (req: AuthenticatedRequest, res: Respon
   try {
     const programme = await getOrEnsureActiveProgramme();
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getTodayDateString(req);
     const rawDayNumber = getDayNumberFromDate(programme.startDate, todayStr);
     
     // Clamp or determine active status
@@ -164,7 +147,7 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
 
     const programme = await getOrEnsureActiveProgramme();
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getTodayDateString(req);
     const activeTodayDayNum = getDayNumberFromDate(programme.startDate, todayStr);
 
     let targetDayNum = requestedDayNum;
@@ -492,7 +475,7 @@ export const getCalendarOverview = async (req: AuthenticatedRequest, res: Respon
 
     const programme = await getOrEnsureActiveProgramme();
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getTodayDateString(req);
     const currentDayNum = getDayNumberFromDate(programme.startDate, todayStr);
     const activePhaseNum = Math.min(3, Math.max(1, Math.ceil(currentDayNum / 30)));
 
@@ -991,7 +974,7 @@ export const commenceProgramme = async (req: Request, res: Response) => {
 
     let newStartDate = startDate;
     if (!newStartDate) {
-      const baseDateStr = clientDate || new Date().toISOString().split('T')[0];
+      const baseDateStr = clientDate || getTodayDateString(req);
       const targetDay = targetDayNumber ? parseInt(targetDayNumber, 10) : 1;
       const [y, m, d] = baseDateStr.split('-').map(Number);
       const baseDate = new Date(Date.UTC(y, m - 1, d));
@@ -1027,7 +1010,7 @@ export const resetProgramme = async (req: Request, res: Response) => {
     const targetDay = targetDayNumber ? parseInt(targetDayNumber, 10) : 1;
 
     if (!newStartDate) {
-      const baseDateStr = clientDate || new Date().toISOString().split('T')[0];
+      const baseDateStr = clientDate || getTodayDateString(req);
       const [y, m, d] = baseDateStr.split('-').map(Number);
       const baseDate = new Date(Date.UTC(y, m - 1, d));
       baseDate.setUTCDate(baseDate.getUTCDate() - (targetDay - 1));
@@ -1058,7 +1041,7 @@ export const saveJournalNote = async (req: AuthenticatedRequest, res: Response) 
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { noteDate, dayNumber, content } = req.body;
-    const dateStr = noteDate || new Date().toISOString().split('T')[0];
+    const dateStr = noteDate || getTodayDateString(req);
 
     const journalNote = await prisma.dailyJournalNote.upsert({
       where: {
@@ -1090,7 +1073,7 @@ export const getJournalNote = async (req: AuthenticatedRequest, res: Response) =
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const dateStr = (req.query.date as string) || new Date().toISOString().split('T')[0];
+    const dateStr = (req.query.date as string) || getTodayDateString(req);
 
     const journalNote = await prisma.dailyJournalNote.findUnique({
       where: {

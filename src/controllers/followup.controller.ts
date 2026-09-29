@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
+import { getTodayDateString } from '../utils/date';
 
 const prisma = new PrismaClient();
 
@@ -33,7 +34,7 @@ export const getAssignedParticipants = async (req: AuthenticatedRequest, res: Re
       return !roles.some((r) => EXCO_ROLES.includes(r));
     });
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getTodayDateString(req);
     const totalTodayActiveTasks = await prisma.task.count({ where: { isActive: true } });
 
     const result = await Promise.all(

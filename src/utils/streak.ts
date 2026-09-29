@@ -1,8 +1,9 @@
 import { PrismaClient } from '@prisma/client';
+import { getTodayDateString } from './date';
 
 const prisma = new PrismaClient();
 
-export const updateParticipantStreak = async (participantId: string) => {
+export const updateParticipantStreak = async (participantId: string, reqOrDate?: any) => {
   // Fetch existing streak record for protection flags
   const streakRecord = await prisma.streak.findUnique({
     where: { participantId },
@@ -26,7 +27,10 @@ export const updateParticipantStreak = async (participantId: string) => {
   // Unique dates of completions (sorted descending e.g. ['2026-09-28', '2026-09-26'])
   const uniqueDates = Array.from(new Set(completions.map((c) => c.completionDate))).sort().reverse();
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  let todayStr = getTodayDateString(reqOrDate);
+  if (typeof reqOrDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(reqOrDate)) {
+    todayStr = reqOrDate;
+  }
 
   let currentStreak = 0;
   let longestStreak = 0;

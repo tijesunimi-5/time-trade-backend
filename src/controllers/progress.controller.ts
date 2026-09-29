@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { updateParticipantStreak } from '../utils/streak';
+import { getTodayDateString } from '../utils/date';
 
 const prisma = new PrismaClient();
 
@@ -11,9 +12,9 @@ export const getParticipantProgress = async (req: AuthenticatedRequest, res: Res
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     // Force recalculation to guarantee accuracy
-    const streak = await updateParticipantStreak(userId);
+    const streak = await updateParticipantStreak(userId, req);
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getTodayDateString(req);
 
     // Today stats
     const todayAssigned = await prisma.task.count({ where: { isActive: true } });

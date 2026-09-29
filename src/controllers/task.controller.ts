@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { updateParticipantStreak } from '../utils/streak';
 import { calculateAutoIncrementReading } from '../utils/readingPlan';
 import { getOrEnsureActiveProgramme } from './programme.controller';
+import { getTodayDateString } from '../utils/date';
 
 const prisma = new PrismaClient();
 
@@ -18,7 +19,7 @@ function getTimeOfDayPriority(timeOfDay?: string | null): number {
 export const getTodayTasks = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
-    const dateStr = (req.query.date as string) || new Date().toISOString().split('T')[0];
+    const dateStr = (req.query.date as string) || getTodayDateString(req);
 
     const programme = await getOrEnsureActiveProgramme();
     const [sy, sm, sd] = programme.startDate.split('-').map(Number);
@@ -125,7 +126,7 @@ export const toggleTaskCompletion = async (req: AuthenticatedRequest, res: Respo
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { taskId, completionDate, notes } = req.body;
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getTodayDateString(req);
     const dateStr = completionDate || todayStr;
 
     // Interaction Guard: Cannot complete future days
