@@ -235,3 +235,26 @@ export const deleteTask = async (req: AuthenticatedRequest, res: Response) => {
     return res.status(500).json({ error: error.message || 'Failed to delete task' });
   }
 };
+
+export const reorderTasks = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { taskOrders } = req.body;
+    if (!Array.isArray(taskOrders) || taskOrders.length === 0) {
+      return res.status(400).json({ error: 'taskOrders array is required' });
+    }
+
+    await prisma.$transaction(
+      taskOrders.map((item: { id: string; displayOrder: number }) =>
+        prisma.task.update({
+          where: { id: item.id },
+          data: { displayOrder: Number(item.displayOrder) || 0 },
+        })
+      )
+    );
+
+    return res.json({ message: 'Tasks reordered successfully' });
+  } catch (error: any) {
+    console.error('Error reordering tasks:', error);
+    return res.status(500).json({ error: error.message || 'Failed to reorder tasks' });
+  }
+};
