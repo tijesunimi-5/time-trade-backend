@@ -98,6 +98,21 @@ export async function getOrEnsureActiveProgramme() {
     });
   }
 
+  if (programme) {
+    programme.phases.forEach((phase) => {
+      phase.weeks.forEach((week) => {
+        week.days.forEach((day) => {
+          day.tasks.sort((a, b) => {
+            const pA = getTimeOfDayPriority(a.timeOfDay);
+            const pB = getTimeOfDayPriority(b.timeOfDay);
+            if (pA !== pB) return pA - pB;
+            return (a.displayOrder || 0) - (b.displayOrder || 0);
+          });
+        });
+      });
+    });
+  }
+
   return programme!;
 }
 
