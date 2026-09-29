@@ -336,6 +336,7 @@ model Poll {
   allowMultiple Boolean      @default(false)
   isStandalone  Boolean      @default(true)
   showAsPopup   Boolean      @default(false)
+  dayNumber     Int?
   taskId        String?
   programmeId   String?
   status        String       @default("ACTIVE") // ACTIVE, CLOSED, DRAFT

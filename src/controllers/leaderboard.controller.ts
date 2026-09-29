@@ -29,6 +29,13 @@ function getDateRangeForPeriod(period: string) {
     return { startDate: todayStr, endDate: todayStr };
   }
 
+  if (period === 'YESTERDAY') {
+    const yesterday = new Date(now);
+    yesterday.setUTCDate(now.getUTCDate() - 1);
+    const yestStr = yesterday.toISOString().split('T')[0];
+    return { startDate: yestStr, endDate: yestStr };
+  }
+
   if (period === 'THIS_WEEK') {
     const dayOfWeek = now.getUTCDay();
     const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -236,7 +243,7 @@ export const getLeaderboard = async (req: AuthenticatedRequest, res: Response) =
     const userId = req.user?.userId;
     const programme = await getOrEnsureActiveProgramme();
 
-    // Fetch all non-EXCO users (participants)
+    // Fetch all users (participants and admins)
     const allUsers = await prisma.user.findMany({
       select: {
         id: true,
@@ -248,7 +255,7 @@ export const getLeaderboard = async (req: AuthenticatedRequest, res: Response) =
       },
     });
 
-    const participants = allUsers.filter((u) => !isExcoMember(u.role));
+    const participants = allUsers;
 
     const { startDate, endDate } = getDateRangeForPeriod(period);
 

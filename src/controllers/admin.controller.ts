@@ -324,16 +324,25 @@ export const getDynamicFormFields = async (req: Request, res: Response) => {
       });
     }
 
-    // 2. Fallback: Return all dynamic form fields in database so admin answer viewer can resolve questions
-    const allFields = await prisma.dynamicFormField.findMany({
-      where: { isActive: true },
-      orderBy: { displayOrder: 'asc' },
-    });
+    // 2. Admin mode fallback: Return all fields only if requested by admin
+    if (req.query.admin === 'true' || req.query.includeUnpublished === 'true') {
+      const allFields = await prisma.dynamicFormField.findMany({
+        where: { isActive: true },
+        orderBy: { displayOrder: 'asc' },
+      });
 
+      return res.json({
+        isPublished: false,
+        formTitle: allFields.length > 0 ? 'Custom Registration Questionnaire' : null,
+        fields: allFields,
+      });
+    }
+
+    // 3. Public mode when unpublished: Return empty fields
     return res.json({
       isPublished: false,
-      formTitle: allFields.length > 0 ? 'Custom Registration Questionnaire' : null,
-      fields: allFields,
+      formTitle: null,
+      fields: [],
     });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to fetch dynamic fields' });

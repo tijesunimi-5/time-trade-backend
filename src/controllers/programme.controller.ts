@@ -389,6 +389,48 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
       }
     }
 
+    const dayPollsRaw = await prisma.poll.findMany({
+      where: {
+        status: 'ACTIVE',
+        dayNumber: targetDayNum,
+      },
+      include: {
+        options: { orderBy: { displayOrder: 'asc' } },
+        votes: true,
+      },
+    });
+
+    const dayPolls = dayPollsRaw.map((p) => {
+      const distinctVoters = new Set(p.votes.map((v: any) => v.userId)).size;
+      const userVotedOptionIds = userId
+        ? p.votes.filter((v: any) => v.userId === userId).map((v: any) => v.optionId)
+        : [];
+      return {
+        id: p.id,
+        question: p.question,
+        description: p.description,
+        allowMultiple: p.allowMultiple,
+        showAsPopup: p.showAsPopup,
+        status: p.status,
+        totalVotes: distinctVoters,
+        hasVoted: userVotedOptionIds.length > 0,
+        userVotedOptionIds,
+        options: p.options.map((opt: any) => {
+          const optionVotes = p.votes.filter((v: any) => v.optionId === opt.id);
+          const voteCount = optionVotes.length;
+          const percentage = distinctVoters > 0 ? Math.round((voteCount / distinctVoters) * 100) : 0;
+          return {
+            id: opt.id,
+            text: opt.text,
+            displayOrder: opt.displayOrder,
+            voteCount,
+            percentage,
+            hasVoted: userVotedOptionIds.includes(opt.id),
+          };
+        }),
+      };
+    });
+
     return res.json({
       dayNumber: targetDayNum,
       targetDate: targetDateStr,
@@ -407,6 +449,7 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
       tasks: tasksWithCompletion,
       personalTasks,
       journalNote: userJournalNote,
+      dayPolls,
       smartMotivationalBanner,
     });
   } catch (error: any) {

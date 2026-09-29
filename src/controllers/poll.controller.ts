@@ -38,6 +38,7 @@ const formatPollForUser = (poll: any, userId?: string) => {
     allowMultiple: poll.allowMultiple,
     isStandalone: poll.isStandalone,
     showAsPopup: poll.showAsPopup,
+    dayNumber: poll.dayNumber || null,
     taskId: poll.taskId,
     taskTitle: poll.task?.title || null,
     status: poll.status,
@@ -53,7 +54,7 @@ const formatPollForUser = (poll: any, userId?: string) => {
 // 1. CREATE POLL (Admin / EXCO)
 export const createPoll = async (req: Request, res: Response) => {
   try {
-    const { question, description, allowMultiple, isStandalone, showAsPopup, taskId, options } = req.body;
+    const { question, description, allowMultiple, isStandalone, showAsPopup, dayNumber, taskId, options } = req.body;
 
     if (!question || !question.trim()) {
       return res.status(400).json({ error: 'Poll question is required' });
@@ -70,8 +71,9 @@ export const createPoll = async (req: Request, res: Response) => {
         question: question.trim(),
         description: description?.trim() || null,
         allowMultiple: Boolean(allowMultiple),
-        isStandalone: taskId ? false : Boolean(isStandalone ?? true),
+        isStandalone: Boolean(isStandalone),
         showAsPopup: Boolean(showAsPopup),
+        dayNumber: dayNumber ? parseInt(String(dayNumber), 10) : null,
         taskId: taskId || null,
         status: 'ACTIVE',
         createdById: (req as any).user?.id || null,
@@ -103,7 +105,7 @@ export const createPoll = async (req: Request, res: Response) => {
 export const updatePoll = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { question, description, allowMultiple, isStandalone, showAsPopup, taskId, status, options } = req.body;
+    const { question, description, allowMultiple, isStandalone, showAsPopup, dayNumber, taskId, status, options } = req.body;
 
     if (!question || !question.trim()) {
       return res.status(400).json({ error: 'Poll question is required' });
@@ -139,8 +141,9 @@ export const updatePoll = async (req: Request, res: Response) => {
         question: question.trim(),
         description: description?.trim() || null,
         allowMultiple: Boolean(allowMultiple),
-        isStandalone: taskId ? false : Boolean(isStandalone ?? true),
+        isStandalone: Boolean(isStandalone),
         showAsPopup: Boolean(showAsPopup),
+        dayNumber: dayNumber ? parseInt(String(dayNumber), 10) : null,
         taskId: taskId || null,
         status: status || existingPoll.status,
       },
@@ -253,6 +256,7 @@ export const getAdminPolls = async (req: Request, res: Response) => {
         allowMultiple: poll.allowMultiple,
         isStandalone: poll.isStandalone,
         showAsPopup: poll.showAsPopup,
+        dayNumber: poll.dayNumber || null,
         status: poll.status,
         taskId: poll.taskId,
         taskTitle: poll.task?.title || null,
@@ -308,7 +312,7 @@ export const deletePoll = async (req: Request, res: Response) => {
   }
 };
 
-// 5. GET ACTIVE STANDALONE DASHBOARD POLLS (Participants)
+// 5. GET ACTIVE STANDALONE & POPUP POLLS (Participants)
 export const getActiveStandalonePolls = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
@@ -316,8 +320,11 @@ export const getActiveStandalonePolls = async (req: Request, res: Response) => {
     const polls = await prisma.poll.findMany({
       where: {
         status: 'ACTIVE',
-        isStandalone: true,
-        taskId: null,
+        OR: [
+          { isStandalone: true },
+          { showAsPopup: true },
+          { dayNumber: { not: null } },
+        ],
       },
       orderBy: { createdAt: 'desc' },
       include: {

@@ -84,6 +84,7 @@ async function autoMigrateDatabase() {
     await prisma.$executeRawUnsafe(`ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "unitsPerDay" INTEGER;`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "unitType" TEXT;`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "bookName" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Poll" ADD COLUMN IF NOT EXISTS "dayNumber" INTEGER;`);
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "SystemSettings" (
           "id" TEXT NOT NULL,
