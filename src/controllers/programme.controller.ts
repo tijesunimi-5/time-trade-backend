@@ -232,11 +232,17 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
 
     let allTasks = [...(day?.tasks || []), ...nonNegotiableTasks];
 
-    // De-duplicate tasks if any overlap
+    // De-duplicate tasks by ID and by normalized title if any overlap
     const seenIds = new Set<string>();
+    const seenTitles = new Set<string>();
     allTasks = allTasks.filter(t => {
       if (seenIds.has(t.id)) return false;
       seenIds.add(t.id);
+
+      const normTitle = t.title.trim().toLowerCase();
+      if (seenTitles.has(normTitle)) return false;
+      seenTitles.add(normTitle);
+
       return true;
     });
 
@@ -250,6 +256,7 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
 
     // User completion, personal tasks & daily journal note
     let completedTaskIds: string[] = [];
+    let completedTaskTitles = new Set<string>();
     let personalTasks: any[] = [];
     let userJournalNote = '';
 
@@ -259,9 +266,16 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
           participantId: userId,
           completionDate: targetDateStr,
         },
-        select: { taskId: true },
+        include: {
+          task: {
+            select: { title: true },
+          },
+        },
       });
       completedTaskIds = completions.map(c => c.taskId);
+      completedTaskTitles = new Set(
+        completions.map(c => c.task?.title?.trim().toLowerCase()).filter(Boolean) as string[]
+      );
 
       personalTasks = await prisma.participantPersonalTask.findMany({
         where: { participantId: userId, isActive: true },
@@ -341,7 +355,7 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
         resourceUrl: dynamicResourceUrl,
         autoIncrementInfo,
         poll: formattedPoll,
-        isCompleted: completedTaskIds.includes(t.id),
+        isCompleted: completedTaskIds.includes(t.id) || (userId ? completedTaskTitles.has(t.title.trim().toLowerCase()) : false),
       };
     });
 

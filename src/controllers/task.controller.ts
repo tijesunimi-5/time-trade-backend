@@ -34,20 +34,42 @@ export const getTodayTasks = async (req: AuthenticatedRequest, res: Response) =>
       orderBy: { displayOrder: 'asc' },
     });
 
+    // De-duplicate tasks by ID and by normalized title if any overlap
+    const seenIds = new Set<string>();
+    const seenTitles = new Set<string>();
+    const deduplicatedTasks = tasks.filter((t) => {
+      if (seenIds.has(t.id)) return false;
+      seenIds.add(t.id);
+
+      const normTitle = t.title.trim().toLowerCase();
+      if (seenTitles.has(normTitle)) return false;
+      seenTitles.add(normTitle);
+
+      return true;
+    });
+
     // Fetch user completions for this date
     let completions: string[] = [];
+    let completedTaskTitles = new Set<string>();
     if (userId) {
       const userCompletions = await prisma.taskCompletion.findMany({
         where: {
           participantId: userId,
           completionDate: dateStr,
         },
-        select: { taskId: true },
+        include: {
+          task: {
+            select: { title: true },
+          },
+        },
       });
       completions = userCompletions.map((c) => c.taskId);
+      completedTaskTitles = new Set(
+        userCompletions.map((c) => c.task?.title?.trim().toLowerCase()).filter(Boolean) as string[]
+      );
     }
 
-    const tasksWithCompletion = tasks.map((task) => {
+    const tasksWithCompletion = deduplicatedTasks.map((task) => {
       const isAuto = task.isAutoIncrement || task.resource?.isAutoIncrement || task.resource?.type === 'BIBLE';
       let autoIncrementInfo = null;
       let dynamicPageRange = task.pageRange;
@@ -76,7 +98,7 @@ export const getTodayTasks = async (req: AuthenticatedRequest, res: Response) =>
         pageRange: dynamicPageRange,
         resourceUrl: dynamicResourceUrl,
         autoIncrementInfo,
-        isCompleted: completions.includes(task.id),
+        isCompleted: completions.includes(task.id) || (userId ? completedTaskTitles.has(task.title.trim().toLowerCase()) : false),
       };
     });
 
