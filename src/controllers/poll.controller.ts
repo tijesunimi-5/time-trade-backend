@@ -3,6 +3,49 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+function computePollExpiration({
+  expirationMode,
+  durationHours,
+  exactExpiresAt,
+  dayNumber,
+}: {
+  expirationMode?: string;
+  durationHours?: number | string;
+  exactExpiresAt?: string;
+  dayNumber?: number | null;
+}): Date | null {
+  const now = new Date();
+
+  if (expirationMode === 'EXACT_TIME' && exactExpiresAt) {
+    const d = new Date(exactExpiresAt);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  if (expirationMode === 'HOURS' && durationHours) {
+    const hrs = parseFloat(String(durationHours));
+    if (!isNaN(hrs) && hrs > 0) {
+      return new Date(now.getTime() + hrs * 60 * 60 * 1000);
+    }
+  }
+
+  if (expirationMode === 'END_OF_DAY' || (!expirationMode && dayNumber)) {
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+    return endOfDay;
+  }
+
+  if (expirationMode === 'NEVER') {
+    return null;
+  }
+
+  if (exactExpiresAt) {
+    const d = new Date(exactExpiresAt);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  return null;
+}
+
 // Helper to format poll data with percentages and user vote status
 const formatPollForUser = (poll: any, userId?: string) => {
   const totalVotesCount = poll.votes?.length || 0;
@@ -31,6 +74,10 @@ const formatPollForUser = (poll: any, userId?: string) => {
     };
   });
 
+  const now = new Date();
+  const isExpired = poll.expiresAt ? now > new Date(poll.expiresAt) : false;
+  const status = isExpired ? 'CLOSED' : poll.status;
+
   return {
     id: poll.id,
     question: poll.question,
@@ -41,7 +88,9 @@ const formatPollForUser = (poll: any, userId?: string) => {
     dayNumber: poll.dayNumber || null,
     taskId: poll.taskId,
     taskTitle: poll.task?.title || null,
-    status: poll.status,
+    status,
+    isExpired,
+    expiresAt: poll.expiresAt || null,
     createdAt: poll.createdAt,
     totalVotes: distinctVoters,
     totalOptionVotes: totalVotesCount,
@@ -54,7 +103,19 @@ const formatPollForUser = (poll: any, userId?: string) => {
 // 1. CREATE POLL (Admin / EXCO)
 export const createPoll = async (req: Request, res: Response) => {
   try {
-    const { question, description, allowMultiple, isStandalone, showAsPopup, dayNumber, taskId, options } = req.body;
+    const {
+      question,
+      description,
+      allowMultiple,
+      isStandalone,
+      showAsPopup,
+      dayNumber,
+      taskId,
+      options,
+      expirationMode,
+      durationHours,
+      exactExpiresAt,
+    } = req.body;
 
     if (!question || !question.trim()) {
       return res.status(400).json({ error: 'Poll question is required' });
@@ -66,6 +127,13 @@ export const createPoll = async (req: Request, res: Response) => {
 
     const cleanOptions = options.map((o: string) => o.trim()).filter((o: string) => o.length > 0);
 
+    const expiresAt = computePollExpiration({
+      expirationMode,
+      durationHours,
+      exactExpiresAt,
+      dayNumber: dayNumber ? parseInt(String(dayNumber), 10) : null,
+    });
+
     const poll = await prisma.poll.create({
       data: {
         question: question.trim(),
@@ -75,6 +143,7 @@ export const createPoll = async (req: Request, res: Response) => {
         showAsPopup: Boolean(showAsPopup),
         dayNumber: dayNumber ? parseInt(String(dayNumber), 10) : null,
         taskId: taskId || null,
+        expiresAt,
         status: 'ACTIVE',
         createdById: (req as any).user?.userId || (req as any).user?.id || null,
         options: {
@@ -105,7 +174,20 @@ export const createPoll = async (req: Request, res: Response) => {
 export const updatePoll = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { question, description, allowMultiple, isStandalone, showAsPopup, dayNumber, taskId, status, options } = req.body;
+    const {
+      question,
+      description,
+      allowMultiple,
+      isStandalone,
+      showAsPopup,
+      dayNumber,
+      taskId,
+      status,
+      options,
+      expirationMode,
+      durationHours,
+      exactExpiresAt,
+    } = req.body;
 
     if (!question || !question.trim()) {
       return res.status(400).json({ error: 'Poll question is required' });
@@ -135,6 +217,17 @@ export const updatePoll = async (req: Request, res: Response) => {
       };
     }).filter((opt) => opt.text.length > 0);
 
+    const computedExpiresAt = expirationMode
+      ? computePollExpiration({
+          expirationMode,
+          durationHours,
+          exactExpiresAt,
+          dayNumber: dayNumber ? parseInt(String(dayNumber), 10) : null,
+        })
+      : exactExpiresAt !== undefined
+      ? exactExpiresAt ? new Date(exactExpiresAt) : null
+      : existingPoll.expiresAt;
+
     await prisma.poll.update({
       where: { id },
       data: {
@@ -145,6 +238,7 @@ export const updatePoll = async (req: Request, res: Response) => {
         showAsPopup: Boolean(showAsPopup),
         dayNumber: dayNumber ? parseInt(String(dayNumber), 10) : null,
         taskId: taskId || null,
+        expiresAt: computedExpiresAt,
         status: status || existingPoll.status,
       },
     });
@@ -400,8 +494,8 @@ export const votePoll = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Poll not found' });
     }
 
-    if (poll.status !== 'ACTIVE') {
-      return res.status(400).json({ error: 'This poll is currently closed for voting' });
+    if (poll.status !== 'ACTIVE' || (poll.expiresAt && new Date() > new Date(poll.expiresAt))) {
+      return res.status(400).json({ error: 'This poll has expired and is closed for voting.' });
     }
 
     // Validate option IDs belong to this poll

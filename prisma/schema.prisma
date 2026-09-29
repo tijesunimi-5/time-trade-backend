@@ -340,6 +340,7 @@ model Poll {
   taskId        String?
   programmeId   String?
   status        String       @default("ACTIVE") // ACTIVE, CLOSED, DRAFT
+  expiresAt     DateTime?
   createdById   String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
