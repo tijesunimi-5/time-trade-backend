@@ -76,7 +76,7 @@ export const createPoll = async (req: Request, res: Response) => {
         dayNumber: dayNumber ? parseInt(String(dayNumber), 10) : null,
         taskId: taskId || null,
         status: 'ACTIVE',
-        createdById: (req as any).user?.id || null,
+        createdById: (req as any).user?.userId || (req as any).user?.id || null,
         options: {
           create: cleanOptions.map((text: string, index: number) => ({
             text,
@@ -93,7 +93,7 @@ export const createPoll = async (req: Request, res: Response) => {
 
     return res.status(201).json({
       message: 'Poll created successfully',
-      poll: formatPollForUser(poll, (req as any).user?.id),
+      poll: formatPollForUser(poll, (req as any).user?.userId || (req as any).user?.id),
     });
   } catch (error: any) {
     console.error('Error creating poll:', error);
@@ -189,7 +189,7 @@ export const updatePoll = async (req: Request, res: Response) => {
 
     return res.json({
       message: 'Poll updated successfully',
-      poll: formatPollForUser(updatedPoll, (req as any).user?.id),
+      poll: formatPollForUser(updatedPoll, (req as any).user?.userId || (req as any).user?.id),
     });
   } catch (error: any) {
     console.error('Error updating poll:', error);
@@ -315,7 +315,7 @@ export const deletePoll = async (req: Request, res: Response) => {
 // 5. GET ACTIVE STANDALONE & POPUP POLLS (Participants)
 export const getActiveStandalonePolls = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId || (req as any).user?.id;
 
     const polls = await prisma.poll.findMany({
       where: {
@@ -349,7 +349,7 @@ export const getActiveStandalonePolls = async (req: Request, res: Response) => {
 export const getTaskPoll = async (req: Request, res: Response) => {
   try {
     const { taskId } = req.params;
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId || (req as any).user?.id;
 
     const poll = await prisma.poll.findFirst({
       where: {
@@ -380,7 +380,7 @@ export const getTaskPoll = async (req: Request, res: Response) => {
 export const votePoll = async (req: Request, res: Response) => {
   try {
     const { id } = req.params; // Poll ID
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId || (req as any).user?.id;
     const { optionIds } = req.body;
 
     if (!userId) {
