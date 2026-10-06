@@ -80,6 +80,7 @@ export const getTodayTasks = async (req: AuthenticatedRequest, res: Response) =>
         autoIncrementInfo = calculateAutoIncrementReading({
           dayNumber,
           startUnit: task.startUnit ?? task.resource?.startUnit,
+          startDayNumber: task.startDayNumber ?? task.resource?.startDayNumber ?? task.dayNumber ?? 1,
           unitsPerDay: task.unitsPerDay ?? task.resource?.unitsPerDay,
           unitType: task.unitType || task.resource?.unitType,
           bookName: task.bookName || task.resource?.bookName || task.title,
@@ -217,6 +218,12 @@ export const updateTask = async (req: AuthenticatedRequest, res: Response) => {
       fileUrl,
       fileName,
       isActive,
+      isAutoIncrement,
+      startUnit,
+      startDayNumber,
+      unitsPerDay,
+      unitType,
+      bookName,
     } = req.body;
 
     const dataToUpdate: any = {};
@@ -237,6 +244,12 @@ export const updateTask = async (req: AuthenticatedRequest, res: Response) => {
     if (fileUrl !== undefined) dataToUpdate.fileUrl = fileUrl || null;
     if (fileName !== undefined) dataToUpdate.fileName = fileName || null;
     if (isActive !== undefined) dataToUpdate.isActive = !!isActive;
+    if (isAutoIncrement !== undefined) dataToUpdate.isAutoIncrement = !!isAutoIncrement;
+    if (startUnit !== undefined) dataToUpdate.startUnit = startUnit !== null ? parseInt(String(startUnit), 10) : null;
+    if (startDayNumber !== undefined) dataToUpdate.startDayNumber = startDayNumber !== null ? parseInt(String(startDayNumber), 10) : null;
+    if (unitsPerDay !== undefined) dataToUpdate.unitsPerDay = unitsPerDay !== null ? parseInt(String(unitsPerDay), 10) : null;
+    if (unitType !== undefined) dataToUpdate.unitType = unitType || null;
+    if (bookName !== undefined) dataToUpdate.bookName = bookName || null;
 
     const task = await prisma.task.update({
       where: { id },

@@ -15,6 +15,13 @@ export const createTaskSchema = z.object({
   resourceUrl: z.string().url().optional().or(z.literal('')),
   instructions: z.string().optional(),
   durationMinutes: z.number().int().optional().default(15),
+  isAutoIncrement: z.boolean().optional(),
+  startUnit: z.number().int().optional(),
+  startDayNumber: z.number().int().optional(),
+  unitsPerDay: z.number().int().optional(),
+  unitType: z.string().optional(),
+  bookName: z.string().optional(),
+  resourceId: z.string().optional().nullable(),
   displayOrder: z.number().int().default(0),
 });
 

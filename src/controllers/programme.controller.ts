@@ -285,6 +285,7 @@ export const getDayDetails = async (req: AuthenticatedRequest, res: Response) =>
         autoIncrementInfo = calculateAutoIncrementReading({
           dayNumber: targetDayNum,
           startUnit: t.startUnit ?? t.resource?.startUnit,
+          startDayNumber: t.startDayNumber ?? t.resource?.startDayNumber ?? targetDayNum,
           unitsPerDay: t.unitsPerDay ?? t.resource?.unitsPerDay,
           unitType: t.unitType || t.resource?.unitType,
           bookName: t.bookName || t.resource?.bookName || t.title,
@@ -688,6 +689,7 @@ export const createOrUpdateResource = async (req: Request, res: Response) => {
       contentNotes,
       isAutoIncrement,
       startUnit,
+      startDayNumber,
       unitsPerDay,
       unitType,
       bookName,
@@ -710,6 +712,7 @@ export const createOrUpdateResource = async (req: Request, res: Response) => {
       contentNotes: contentNotes || null,
       isAutoIncrement: !!isAutoIncrement,
       startUnit: startUnit ? parseInt(startUnit, 10) : 1,
+      startDayNumber: startDayNumber ? parseInt(startDayNumber, 10) : 1,
       unitsPerDay: unitsPerDay ? parseInt(unitsPerDay, 10) : 3,
       unitType: unitType || (type === 'BIBLE' ? 'CHAPTERS' : 'PAGES'),
       bookName: bookName || title || null,
@@ -754,6 +757,12 @@ export const assignTaskToDay = async (req: Request, res: Response) => {
       resourceUrl,
       fileUrl,
       fileName,
+      isAutoIncrement,
+      startUnit,
+      startDayNumber,
+      unitsPerDay,
+      unitType,
+      bookName,
     } = req.body;
 
     if (!title || !pillar) {
@@ -778,6 +787,12 @@ export const assignTaskToDay = async (req: Request, res: Response) => {
         resourceUrl: resourceUrl || null,
         fileUrl: fileUrl || null,
         fileName: fileName || null,
+        isAutoIncrement: !!isAutoIncrement,
+        startUnit: startUnit ? parseInt(startUnit, 10) : undefined,
+        startDayNumber: startDayNumber ? parseInt(startDayNumber, 10) : undefined,
+        unitsPerDay: unitsPerDay ? parseInt(unitsPerDay, 10) : undefined,
+        unitType: unitType || undefined,
+        bookName: bookName || undefined,
       },
       include: { resource: true },
     });

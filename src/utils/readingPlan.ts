@@ -1,6 +1,7 @@
 export function calculateAutoIncrementReading(params: {
   dayNumber: number;
   startUnit?: number | null;
+  startDayNumber?: number | null;
   unitsPerDay?: number | null;
   unitType?: string | null;
   bookName?: string | null;
@@ -10,12 +11,15 @@ export function calculateAutoIncrementReading(params: {
 }) {
   const day = Math.max(1, params.dayNumber || 1);
   const startUnit = typeof params.startUnit === 'number' ? params.startUnit : 1;
+  const startDayNumber = typeof params.startDayNumber === 'number' ? params.startDayNumber : 1;
   const unitsPerDay = typeof params.unitsPerDay === 'number' ? params.unitsPerDay : 3;
   const unitType = (params.unitType || (params.resourceType === 'BIBLE' ? 'CHAPTERS' : 'PAGES')).toUpperCase();
   const bookName = params.bookName || (params.resourceType === 'BIBLE' ? 'Matthew' : 'Book');
   const version = params.bibleVersion || 'KJV';
 
-  const startForToday = startUnit + (day - 1) * unitsPerDay;
+  // Calculate day offset relative to startDayNumber (so resetting startUnit at Day X starts cleanly from startUnit)
+  const effectiveDayOffset = Math.max(0, day - startDayNumber);
+  const startForToday = startUnit + effectiveDayOffset * unitsPerDay;
   const endForToday = startForToday + Math.max(1, unitsPerDay) - 1;
 
   let calculatedRange = '';

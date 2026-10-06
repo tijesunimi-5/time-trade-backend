@@ -109,6 +109,7 @@ model Resource {
   contentNotes     String?  @db.Text
   isAutoIncrement  Boolean  @default(false)
   startUnit        Int?     @default(1)
+  startDayNumber   Int?     @default(1)
   unitsPerDay      Int?     @default(3)
   unitType         String?  @default("CHAPTERS") // "CHAPTERS" or "PAGES"
   bookName         String?  // e.g. "Matthew" or "Genesis" or "Mindset"
@@ -167,6 +168,7 @@ model Task {
   durationMinutes      Int?          @default(15)
   isAutoIncrement      Boolean?      @default(false)
   startUnit            Int?
+  startDayNumber       Int?          @default(1)
   unitsPerDay          Int?
   unitType             String?
   bookName             String?

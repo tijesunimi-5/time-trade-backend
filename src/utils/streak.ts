@@ -32,74 +32,11 @@ export const updateParticipantStreak = async (participantId: string, reqOrDate?:
     todayStr = reqOrDate;
   }
 
-  let currentStreak = 0;
-  let longestStreak = 0;
-
-  if (uniqueDates.length === 0) {
-    currentStreak = bonusStreak;
-  } else {
-    const lastActivityDateStr = uniqueDates[0];
-    const [ty, tm, td] = todayStr.split('-').map(Number);
-    const [ly, lm, ld] = lastActivityDateStr.split('-').map(Number);
-
-    const todayDate = Date.UTC(ty, tm - 1, td);
-    const lastDate = Date.UTC(ly, lm - 1, ld);
-    const daysSinceLastActivity = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
-
-    // Rule: Missing 2 or more consecutive days up to today resets current streak to 0 (unless admin protected)
-    if (daysSinceLastActivity >= 3 && !isProtected) {
-      currentStreak = 0 + bonusStreak;
-    } else {
-      let activeDaysCount = 1;
-
-      for (let i = 0; i < uniqueDates.length - 1; i++) {
-        const [y1, m1, d1] = uniqueDates[i].split('-').map(Number);
-        const [y2, m2, d2] = uniqueDates[i + 1].split('-').map(Number);
-
-        const date1 = Date.UTC(y1, m1 - 1, d1);
-        const date2 = Date.UTC(y2, m2 - 1, d2);
-        const diff = Math.floor((date1 - date2) / (1000 * 60 * 60 * 24));
-
-        // diff <= 2 means 0 or 1 missed day (1-day grace gap allowed!)
-        if (diff <= 2) {
-          activeDaysCount++;
-        } else {
-          if (!isProtected) {
-            break;
-          } else {
-            activeDaysCount++;
-          }
-        }
-      }
-
-      currentStreak = activeDaysCount + bonusStreak;
-    }
-  }
-
-  // Calculate longest streak
-  if (uniqueDates.length > 0) {
-    let streakCount = 1;
-    longestStreak = 1;
-
-    for (let i = 0; i < uniqueDates.length - 1; i++) {
-      const [y1, m1, d1] = uniqueDates[i].split('-').map(Number);
-      const [y2, m2, d2] = uniqueDates[i + 1].split('-').map(Number);
-      const date1 = Date.UTC(y1, m1 - 1, d1);
-      const date2 = Date.UTC(y2, m2 - 1, d2);
-      const diff = Math.floor((date1 - date2) / (1000 * 60 * 60 * 24));
-
-      if (diff <= 2) {
-        streakCount++;
-        if (streakCount > longestStreak) {
-          longestStreak = streakCount;
-        }
-      } else {
-        streakCount = 1;
-      }
-    }
-  }
-
-  longestStreak = Math.max(currentStreak, longestStreak);
+  // Streak policy update: Streaks never reset to 0 when days are missed.
+  // Every active day completed adds continuously to the participant's streak where they left off.
+  const currentStreak = uniqueDates.length + bonusStreak;
+  const previousLongest = streakRecord?.longestStreak || 0;
+  const longestStreak = Math.max(currentStreak, previousLongest, uniqueDates.length + bonusStreak);
   const totalAssigned = totalAssignedTasks * 90;
   const overallPercentage = Math.min(100, Math.round((totalCompleted / Math.max(1, totalAssignedTasks * 17)) * 100));
   const lastCompletedDate = uniqueDates[0] || null;
