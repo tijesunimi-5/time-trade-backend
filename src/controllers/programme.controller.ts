@@ -609,7 +609,26 @@ export const getAdminProgrammeTree = async (req: Request, res: Response) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    return res.json({ programme, templates, resources });
+    const globalTasks = await prisma.task.findMany({
+      where: {
+        OR: [
+          { dayId: null },
+          { isNonNegotiable: true },
+        ],
+      },
+      include: {
+        resource: true,
+        day: {
+          select: {
+            dayNumber: true,
+            title: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return res.json({ programme, templates, resources, globalTasks });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to fetch admin tree' });
   }
